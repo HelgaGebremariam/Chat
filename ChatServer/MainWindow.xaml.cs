@@ -21,10 +21,20 @@ namespace ChatServer
     /// </summary>
     public partial class MainWindow : Window
     {
+        ChatConnectionServer chatConnectionServer;
         public MainWindow()
         {
             InitializeComponent();
-			ChatConnectionServer server = new ChatConnectionServer();
+			chatConnectionServer = new ChatConnectionServer();
+            ShowChatHistory();
+        }
+
+        public void ShowChatHistory()
+        {
+            for(int i = 0; i < chatConnectionServer.ChatHistory.Count(); i++)
+            {
+                textBlockChatHistory.Text += chatConnectionServer.ChatHistory.ElementAt(i).ToString();
+            }
         }
 
     }

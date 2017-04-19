@@ -7,12 +7,13 @@ using System.IO.Pipes;
 using System.IO;
 using System.Threading;
 using System.Configuration;
+using System.Collections.Concurrent;
 
 namespace ChatLibrary
 {
     public class ChatConnectionServer : IChatConnectionServer
     {
-		private Dictionary<string, string> chatHistory;
+		public ConcurrentBag<ChatMessage> ChatHistory;
 
 		private int maxClientsNumber
 		{
@@ -30,6 +31,27 @@ namespace ChatLibrary
 			}
 		}
 
+        private void SendChatHistory(ChatMessageStream chatMessageStream)
+        {
+            if (ChatHistory != null)
+            {
+                foreach (var message in ChatHistory)
+                {
+                    chatMessageStream.WriteMessage(message);
+                }
+            }
+            var defaultMessage = new ChatMessage() { MessageSendDate = DateTime.MinValue };
+            chatMessageStream.WriteMessage(defaultMessage);
+        }
+
+        private void ChatListener(ChatMessageStream chatMessageStream)
+        {
+            while(true)
+            {
+
+            }
+        }
+
 		private void ServerThread(object data)
         {
             NamedPipeServerStream pipeServer =
@@ -41,18 +63,9 @@ namespace ChatLibrary
 
             try
             {
-                StreamString streamString = new StreamString(pipeServer);
+                var chatMessageStream = new ChatMessageStream(pipeServer);
 
-				if(chatHistory != null)
-				{
-					foreach(var message in chatHistory)
-					{
-						StringBuilder messageToSend = new StringBuilder(message.Key);
-						messageToSend.Append(": ");
-						messageToSend.Append(message.Value);
-						streamString.WriteString(messageToSend.ToString());
-					}
-				}
+                SendChatHistory(chatMessageStream);
             }
 
             catch (IOException e)
@@ -64,8 +77,22 @@ namespace ChatLibrary
 
 		public ChatConnectionServer()
         {
-			chatHistory = new Dictionary<string, string>();
-			chatHistory.Add("Sarah Kerrigan", "Amun will be dead");
+            ChatHistory = new ConcurrentBag<ChatMessage>();
+            ChatMessage message = new ChatMessage()
+            {
+                UserName = "Sarah Kerrigan",
+                Message = "Amon will be dead.",
+                MessageSendDate = DateTime.Now
+            };
+            ChatHistory.Add(message);
+            message = new ChatMessage()
+            {
+                UserName = "James Raynor",
+                Message = "Yeeeah, absolutely!",
+                MessageSendDate = DateTime.Now
+            };
+
+            ChatHistory.Add(message);
 			Thread server = new Thread(ServerThread);
 			server.Start();
 

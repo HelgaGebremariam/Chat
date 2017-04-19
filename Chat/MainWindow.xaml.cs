@@ -21,6 +21,7 @@ namespace Chat
     /// </summary>
     public partial class MainWindow : Window
     {
+        private ChatConnectionClient chatClient;
         public MainWindow()
         {
             InitializeComponent();
@@ -33,8 +34,16 @@ namespace Chat
 
         private void buttonConnect_Click(object sender, RoutedEventArgs e)
         {
-			ChatConnectionClient client = new ChatConnectionClient();
-			textBoxChatMessages.Text = client.ChatHistory.First();
+            chatClient = new ChatConnectionClient();
+            ShowChatHistory();
+        }
+
+        private void ShowChatHistory()
+        {
+            for(int i = 0; i < chatClient.ChatHistory.Count(); i++)
+            {
+                textBoxChatMessages.Text += chatClient.ChatHistory[i].ToString();
+            }
         }
     }
 }

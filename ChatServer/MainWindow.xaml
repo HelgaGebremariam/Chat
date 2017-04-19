@@ -6,5 +6,7 @@
         xmlns:local="clr-namespace:ChatServer"
         mc:Ignorable="d"
         Title="Chat" Height="377.61" Width="537.993">
-    <Grid/>
+    <Grid>
+        <TextBlock x:Name="textBlockChatHistory" HorizontalAlignment="Left" Margin="25,26,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Height="240" Width="444"/>
+    </Grid>
 </Window>

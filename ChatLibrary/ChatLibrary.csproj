@@ -43,11 +43,11 @@
   <ItemGroup>
     <Compile Include="ChatConnectionClient.cs" />
     <Compile Include="ChatConnectionServer.cs" />
+    <Compile Include="ChatMessage.cs" />
+    <Compile Include="ChatMessageStream.cs" />
     <Compile Include="IChatConnectionClient.cs" />
     <Compile Include="IChatConnectionServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ReadFileToStream.cs" />
-    <Compile Include="StreamString.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

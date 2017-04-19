@@ -12,7 +12,7 @@ namespace ChatLibrary
 {
     public class ChatConnectionClient : IChatConnectionClient
     {
-		public List<string> ChatHistory { get; set; }
+		public List<ChatMessage> ChatHistory { get; set; }
 
 		private int maxClientsNumber
 		{
@@ -38,17 +38,23 @@ namespace ChatLibrary
 			}
 		}
 
-		public void UploadChatHistory(StreamString streamString)
+		public void UploadChatHistory(ChatMessageStream streamString)
 		{
-			ChatHistory = new List<string>();
-			ChatHistory.Add(streamString.ReadString());
+			ChatHistory = new List<ChatMessage>();
+            while (ChatHistory.Count() < 100)
+            {
+                var message = streamString.ReadMessage();
+                if (message.MessageSendDate == DateTime.MinValue)
+                    break;
+                ChatHistory.Add(message);
+            }
 		}
 
 		public ChatConnectionClient()
 		{
 			NamedPipeClientStream pipeClient = new NamedPipeClientStream(serverName, pipeName, PipeDirection.InOut);
 			pipeClient.Connect();
-			StreamString streamString = new StreamString(pipeClient);
+			ChatMessageStream streamString = new ChatMessageStream(pipeClient);
 
 			UploadChatHistory(streamString);
 		}
