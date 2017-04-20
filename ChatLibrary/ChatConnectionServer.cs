@@ -11,10 +11,13 @@ using System.Collections.Concurrent;
 
 namespace ChatLibrary
 {
-    public class ChatConnectionServer : IChatConnectionServer
+    public class ChatConnectionServer
     {
 		public ConcurrentBag<ChatMessage> ChatHistory;
-
+		NamedPipeServerStream pipeServer;
+		ChatMessageExchanger chatMessageSender;
+		NamedPipeServerStream pipeGreeting;
+		private event Action<ChatMessage> messageRecievedEvent;
 		private int maxClientsNumber
 		{
 			get
@@ -23,15 +26,32 @@ namespace ChatLibrary
 			}
 		}
 
-		private string pipeName
+        private string clientPipeName
+        {
+            get
+            {
+                return ConfigurationManager.AppSettings["clientPipeName"];
+            }
+        }
+
+        private string serverPipeName
+        {
+            get
+            {
+                return ConfigurationManager.AppSettings["serverPipeName"];
+            }
+        }
+
+		private string greetingPipeName
 		{
 			get
 			{
-				return ConfigurationManager.AppSettings["pipeName"];
+				return ConfigurationManager.AppSettings["greetingPipeName"];
 			}
 		}
 
-        private void SendChatHistory(ChatMessageStream chatMessageStream)
+
+		private void SendChatHistory(ChatMessageExchanger chatMessageStream)
         {
             if (ChatHistory != null)
             {
@@ -44,40 +64,49 @@ namespace ChatLibrary
             chatMessageStream.WriteMessage(defaultMessage);
         }
 
-        private void ChatListener(ChatMessageStream chatMessageStream)
+        private void ChatListener(ChatMessageClientServerStream chatMessageStream)
         {
             while(true)
             {
-
-            }
+				var message = chatMessageStream.GetNextMessage();
+                ChatHistory.Add(message);
+				messageRecievedEvent(message);
+				chatMessageSender.WriteMessage(message);
+			}
         }
 
 		private void ServerThread(object data)
         {
-            NamedPipeServerStream pipeServer =
-                new NamedPipeServerStream(pipeName, PipeDirection.InOut, maxClientsNumber);
+			try
+			{
+				pipeGreeting.WaitForConnection();
+				var greetingStream = new ChatMessageExchanger(pipeGreeting);
+				var firstMessage = greetingStream.ReadMessage();
+				SendChatHistory(greetingStream);
 
-            int threadId = Thread.CurrentThread.ManagedThreadId;
-
-            pipeServer.WaitForConnection();
-
-            try
-            {
-                var chatMessageStream = new ChatMessageStream(pipeServer);
-
-                SendChatHistory(chatMessageStream);
-            }
+				pipeGreeting.WaitForPipeDrain();
+				pipeGreeting.Close();
+				var chatMessageClientServerStream = new ChatMessageClientServerStream(firstMessage.UserName);
+				pipeServer.WaitForConnection();
+				ChatListener(chatMessageClientServerStream);
+			}
 
             catch (IOException e)
             {
                 Console.WriteLine("ERROR: {0}", e.Message);
             }
-            pipeServer.Close();
+			pipeGreeting.Close();
         }
 
-		public ChatConnectionServer()
+		public ChatConnectionServer(Action<ChatMessage> messageRecievedEvent)
         {
-            ChatHistory = new ConcurrentBag<ChatMessage>();
+			pipeServer = new NamedPipeServerStream(serverPipeName, PipeDirection.Out, maxClientsNumber);
+			
+			chatMessageSender = new ChatMessageExchanger(pipeServer);
+
+			this.messageRecievedEvent += messageRecievedEvent;
+
+			ChatHistory = new ConcurrentBag<ChatMessage>();
             ChatMessage message = new ChatMessage()
             {
                 UserName = "Sarah Kerrigan",
@@ -91,7 +120,7 @@ namespace ChatLibrary
                 Message = "Yeeeah, absolutely!",
                 MessageSendDate = DateTime.Now
             };
-
+			pipeGreeting = new NamedPipeServerStream(greetingPipeName, PipeDirection.InOut, 1);
             ChatHistory.Add(message);
 			Thread server = new Thread(ServerThread);
 			server.Start();

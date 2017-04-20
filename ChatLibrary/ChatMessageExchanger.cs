@@ -10,15 +10,13 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace ChatLibrary
 {
-    public class ChatMessageStream
+    public class ChatMessageExchanger
     {
         private Stream ioStream;
-        private UnicodeEncoding streamEncoding;
 
-        public ChatMessageStream(Stream ioStream)
+        public ChatMessageExchanger(Stream ioStream)
         {
             this.ioStream = ioStream;
-            streamEncoding = new UnicodeEncoding();
         }
 
         public static byte[] ObjectToByteArray(Object obj)
@@ -57,7 +55,6 @@ namespace ChatLibrary
 
         public int WriteMessage(ChatMessage outputMessage)
         {
-
             byte[] outBuffer = ObjectToByteArray(outputMessage);
             int len = outBuffer.Length;
             if (len > UInt16.MaxValue)

@@ -29,12 +29,12 @@ namespace Chat
 
         private void buttonSendMessage_Click(object sender, RoutedEventArgs e)
         {
-
+            chatClient.SendMessage(textBoxNewMessage.Text);
         }
 
         private void buttonConnect_Click(object sender, RoutedEventArgs e)
         {
-            chatClient = new ChatConnectionClient();
+            chatClient = new ChatConnectionClient(textBoxClientName.Text, AddMessage);
             ShowChatHistory();
         }
 
@@ -45,5 +45,25 @@ namespace Chat
                 textBoxChatMessages.Text += chatClient.ChatHistory[i].ToString();
             }
         }
-    }
+
+		private void textBoxClientName_TextChanged(object sender, TextChangedEventArgs e)
+		{
+			if(textBoxClientName.Text == string.Empty)
+			{
+				textBoxClientName.Text = "DefaultName";
+			}
+		}
+
+		public void AddMessage(ChatMessage message)
+		{
+			var del = new Action<string>(AddMessageCrossThread);
+			Dispatcher.Invoke(del, message.ToString());
+
+		}
+
+		public void AddMessageCrossThread(string text)
+		{
+			textBoxChatMessages.Text += text;
+		}
+	}
 }

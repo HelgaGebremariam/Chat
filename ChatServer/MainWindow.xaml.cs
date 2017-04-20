@@ -25,7 +25,7 @@ namespace ChatServer
         public MainWindow()
         {
             InitializeComponent();
-			chatConnectionServer = new ChatConnectionServer();
+			chatConnectionServer = new ChatConnectionServer(AddMessage);
             ShowChatHistory();
         }
 
@@ -33,9 +33,21 @@ namespace ChatServer
         {
             for(int i = 0; i < chatConnectionServer.ChatHistory.Count(); i++)
             {
-                textBlockChatHistory.Text += chatConnectionServer.ChatHistory.ElementAt(i).ToString();
+				AddMessage(chatConnectionServer.ChatHistory.ElementAt(i));
             }
         }
+
+		public void AddMessage(ChatMessage message)
+		{
+			var del = new Action<string>(AddMessageCrossThread);
+			Dispatcher.Invoke(del, message.ToString());
+			
+		}
+
+		public void AddMessageCrossThread(string text)
+		{
+			textBlockChatHistory.Text += text;
+		}
 
     }
 }
