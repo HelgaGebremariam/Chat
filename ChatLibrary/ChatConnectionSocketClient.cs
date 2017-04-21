@@ -52,11 +52,11 @@ namespace ChatLibrary
             }
         }
 
-        private int greetingSocketPort
+        private List<int> greetingSocketPorts
         {
             get
             {
-                return Convert.ToInt32(ConfigurationManager.AppSettings["greetingSocketPort"]);
+                return ConfigurationManager.AppSettings["greetingSocketPorts"].Split(',').Select(s=>Convert.ToInt32(s)).ToList();
             }
         }
 
@@ -65,7 +65,13 @@ namespace ChatLibrary
             
             using (Socket greetingSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
             {
-                greetingSocket.Connect(serverName, greetingSocketPort);
+                foreach(var greetingPort in greetingSocketPorts)
+                {
+                    greetingSocket.Connect(serverName, greetingPort);
+                    if (greetingSocket.Connected)
+                        break;
+                }
+
                 if (!greetingSocket.Connected)
                     return false;
 
@@ -99,7 +105,7 @@ namespace ChatLibrary
                     messageRecievedEvent(newMessage);
                 }
             }
-            catch(IOException ex)
+            catch(IOException)
             {
 
             }
