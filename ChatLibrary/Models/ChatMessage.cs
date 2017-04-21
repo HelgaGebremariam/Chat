@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ChatLibrary
+namespace ChatLibrary.Models
 {
     [Serializable]
     public class ChatMessage

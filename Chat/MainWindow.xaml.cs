@@ -13,6 +13,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using ChatLibrary;
+using ChatLibrary.Models;
+using ChatLibrary.Interfaces;
 
 namespace Chat
 {
@@ -21,7 +23,7 @@ namespace Chat
     /// </summary>
     public partial class MainWindow : Window
     {
-        private ChatConnectionClient chatClient;
+        private IChatConnectionClient chatClient;
         public MainWindow()
         {
             InitializeComponent();
@@ -49,6 +51,7 @@ namespace Chat
                 labelServerError.Visibility = Visibility.Visible;
                 InitialState();
             }
+            textBoxNewMessage.Text = string.Empty;
         }
 
         private void buttonConnect_Click(object sender, RoutedEventArgs e)
@@ -60,7 +63,7 @@ namespace Chat
             
             try
             {
-                chatClient = new ChatConnectionClient(textBoxClientName.Text, AddMessage);
+                chatClient = new ChatConnectionPipeClient(textBoxClientName.Text, AddMessage);
                 ShowChatHistory();
                 ConnectedState();
             }

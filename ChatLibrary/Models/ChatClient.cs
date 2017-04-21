@@ -10,7 +10,7 @@ using System.Configuration;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 
-namespace ChatLibrary
+namespace ChatLibrary.Models
 {
     public class ChatClient : IDisposable
     {

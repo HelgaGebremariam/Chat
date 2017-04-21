@@ -7,10 +7,12 @@ using System.IO.Pipes;
 using System.IO;
 using System.Threading;
 using System.Configuration;
+using ChatLibrary.Models;
+using ChatLibrary.Interfaces;
 
 namespace ChatLibrary
 {
-    public class ChatConnectionClient : IDisposable
+    public class ChatConnectionPipeClient : IChatConnectionClient
     {
 		public List<ChatMessage> ChatHistory { get; set; }
         private StreamObjectReader chatMessageStreamClient;
@@ -55,7 +57,7 @@ namespace ChatLibrary
 			}
 		}
 
-		public void ChatListener()
+		private void ChatListener()
 		{
 			while (pipeServer.IsConnected)
 			{
@@ -64,7 +66,7 @@ namespace ChatLibrary
 			}
 		}
 
-		public bool Greet()
+		private bool Greet()
 		{
 			NamedPipeClientStream greetingPipe = new NamedPipeClientStream(serverName, greetingPipeName, PipeDirection.InOut);
             greetingPipe.Connect(connectionTimeout);
@@ -88,7 +90,7 @@ namespace ChatLibrary
             return true;
 		}
 
-		public ChatConnectionClient(string clientName, Action<ChatMessage> messageRecievedEvent)
+		public ChatConnectionPipeClient(string clientName, Action<ChatMessage> messageRecievedEvent)
 		{
 			this.messageRecievedEvent += messageRecievedEvent;
 			this.clientName = clientName;

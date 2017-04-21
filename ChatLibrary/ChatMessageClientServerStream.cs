@@ -8,6 +8,7 @@ using System.IO;
 using System.Threading;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Configuration;
+using ChatLibrary.Models;
 
 namespace ChatLibrary
 {

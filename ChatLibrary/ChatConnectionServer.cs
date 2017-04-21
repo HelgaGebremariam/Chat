@@ -10,6 +10,7 @@ using System.Threading;
 using System.Configuration;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
+using ChatLibrary.Models;
 
 namespace ChatLibrary
 {
