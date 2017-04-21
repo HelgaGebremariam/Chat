@@ -19,7 +19,8 @@ namespace ChatLibrary
         NamedPipeClientStream pipeClient;
         NamedPipeClientStream pipeServer;
 		private event Action<ChatMessage> messageRecievedEvent;
-        
+        private Task chatListenerTask;
+
         private string clientId { get; set; }
 
         private string clientPipeName
@@ -56,7 +57,6 @@ namespace ChatLibrary
 
 		public void ChatListener()
 		{
-            
 			while (pipeServer.IsConnected)
 			{
 				var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
@@ -99,9 +99,7 @@ namespace ChatLibrary
             pipeClient.Connect();
             chatMessageStreamClient = new StreamObjectReader(pipeClient);
 
-            Thread server = new Thread(ChatListener);
-			server.Start();
-
+            chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
 		}
 
         public void SendMessage(string message)
@@ -115,6 +113,7 @@ namespace ChatLibrary
             pipeServer.Close();
             pipeClient.Dispose();
             pipeServer.Dispose();
+            chatListenerTask.Wait();
         }
     }
 }
