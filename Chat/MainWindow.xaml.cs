@@ -96,7 +96,8 @@ namespace Chat
 
         public void window_Closed(object sender, EventArgs e)
         {
-            chatClient.Dispose();
+            if(chatClient != null)
+                chatClient.Dispose();
         }
 
     }

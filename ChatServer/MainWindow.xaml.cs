@@ -53,7 +53,8 @@ namespace ChatServer
 
         public void window_Closed(object sender, EventArgs e)
         {
-            chatConnectionServer.Dispose();
+            if(chatConnectionServer != null)
+                chatConnectionServer.Dispose();
         }
     }
 }
