@@ -23,6 +23,11 @@ namespace ChatLibrary
         private event Action<ChatMessage> messageRecievedEvent;
 
         private int clientsCounter = 0;
+        private EventWaitHandle eventMessageReceived;
+        private Socket greetingSocket;
+        private Socket clientSocket;
+        private Socket serverSocket;
+
         private string clientUniqueIdPostfix
         {
             get
@@ -136,55 +141,41 @@ namespace ChatLibrary
 
         public void GreetNewSocketClient()
         {
-            var hostName = "localhost";
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(hostName);
-            IPEndPoint localEP = new IPEndPoint(ipHostInfo.AddressList[1], greetingSocketPort);
 
-            Socket greetingListener = new Socket(localEP.Address.AddressFamily,
-                SocketType.Stream, ProtocolType.Tcp);
-            greetingListener.Bind(localEP);
-            greetingListener.Listen(1);
+            greetingSocket.Listen(1);
 
-            greetingListener.BeginAccept((IAsyncResult result)=> {
-                var listener = result.AsyncState as Socket;
-                Socket handler = listener.EndAccept(result);
+            greetingSocket.BeginAccept((IAsyncResult result)=> {
+                Socket handler = greetingSocket.EndAccept(result);
+                string clientId = clientUniqueIdPostfix;
                 var greetingStream = new StreamObjectReader(new NetworkStream(handler));
                 var firstMessage = greetingStream.ReadMessage<ChatMessage>();
+                greetingStream.WriteMessage<string>(clientId);
                 SocketSettings socketSettings = new SocketSettings()
                 {
                     ClientSocketPort = clientSocketPort,
                     ServerSocketPort = serverSocketPort
                 };
-
+                
                 greetingStream.WriteMessage<SocketSettings>(socketSettings);
                 SendChatHistory(greetingStream);
                 handler.Close();
                 messageRecievedEvent(new ChatMessage() { UserName = firstMessage.UserName, Message = "Joined", MessageSendDate = DateTime.Now });
 
-                localEP = new IPEndPoint(ipHostInfo.AddressList[1], serverSocketPort);
-                Socket serverSocket = new Socket(localEP.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                serverSocket.Bind(localEP);
-                serverSocket.Listen(1);
+                var chatClient = new ChatClient()
+                {
+                    ClientId = clientId,
+                    ClientName = firstMessage.UserName,
+                    IsActive = true
+                };
+                chatClients.Add(chatClient);
+                chatClient.ListenerTask = Task.Factory.StartNew(() =>
+                {
+                    ChatListenerSocket(chatClient);
+                });
 
-                serverSocket.BeginAccept((IAsyncResult asyncResult) => {
-                    Socket serverHandler = serverSocket.EndAccept(asyncResult);
 
-                    var chatClient = new ChatClient()
-                    {
-                        ClientId = clientUniqueIdPostfix,
-                        ClientName = firstMessage.UserName,
-                        ClientSocket = serverHandler,
-                        IsActive = true
-                    };
-                    chatClients.Add(chatClient);
-                    chatClient.ListenerTask = Task.Factory.StartNew(() =>
-                    {
-                        ChatListenerSocket(chatClient);
-                    });
-
-                }, serverSocket);
             },
-                greetingListener);
+                new object());
 
 
 
@@ -210,6 +201,8 @@ namespace ChatLibrary
 
         private void ChatListenerSocket(ChatClient chatClient)
         {
+
+
             var hostName = "localhost";
             IPHostEntry ipHostInfo = Dns.GetHostEntry(hostName);
             IPEndPoint localEP = new IPEndPoint(ipHostInfo.AddressList[1], clientSocketPort);
@@ -220,7 +213,7 @@ namespace ChatLibrary
             var handler = listener.Accept();
             using (var chatMessageStream = new ChatMessageClientServerStream(new NetworkStream(handler), chatClient.ClientId, chatClient.ClientName))
             {
-                while (chatClient.IsActive && chatClient.ClientSocket.Connected)
+                while (chatClient.IsActive)
                 {
                     var message = chatMessageStream.GetNextMessage();
                     if (message == null)
@@ -237,7 +230,17 @@ namespace ChatLibrary
 
         public void SendMessageToClients(ChatMessage message)
         {
-            foreach(var client in chatClients)
+            eventMessageReceived.Reset();
+
+            serverSocket.Listen(maxClientsNumber);
+
+            serverSocket.BeginAccept((IAsyncResult asyncResult) => {
+                Socket serverHandler = serverSocket.EndAccept(asyncResult);
+                var messageStream = new StreamObjectReader(new NetworkStream(serverHandler));
+                messageStream.WriteMessage(message);
+            }, serverSocket);
+
+            foreach (var client in chatClients)
             {
                 if (client.IsActive)
                 {
@@ -245,11 +248,6 @@ namespace ChatLibrary
                         
                     {
                         var messageStream = new StreamObjectReader(client.ClientPipe);
-                        messageStream.WriteMessage(message);
-                    }
-                    else if (client.ClientSocket != null && client.ClientSocket.Connected)
-                    {
-                        var messageStream = new StreamObjectReader(new NetworkStream(client.ClientSocket));
                         messageStream.WriteMessage(message);
                     }
                     else
@@ -270,9 +268,24 @@ namespace ChatLibrary
 
         public ChatConnectionServer(Action<ChatMessage> messageRecievedEvent)
         {
-
-			this.messageRecievedEvent += messageRecievedEvent;
+            eventMessageReceived = new EventWaitHandle(false, EventResetMode.AutoReset, "eventMessageReceived");
+            this.messageRecievedEvent += messageRecievedEvent;
             this.messageRecievedEvent += SendMessageToClients;
+
+            var hostName = "localhost";
+            IPHostEntry ipHostInfo = Dns.GetHostEntry(hostName);
+            IPEndPoint localEP = new IPEndPoint(ipHostInfo.AddressList[1], greetingSocketPort);
+
+            greetingSocket = new Socket(localEP.Address.AddressFamily,
+                SocketType.Stream, ProtocolType.Tcp);
+            greetingSocket.Bind(localEP);
+
+            localEP = new IPEndPoint(ipHostInfo.AddressList[1], serverSocketPort);
+            serverSocket = new Socket(localEP.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            serverSocket.Bind(localEP);
+            serverSocket.Listen(1);
+
+
             chatClients = new ConcurrentBag<ChatClient>();
             ChatHistory = new ConcurrentBag<ChatMessage>();
             ChatMessage message = new ChatMessage()

@@ -9,6 +9,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Configuration;
+using System.Threading;
 
 namespace ChatLibrary
 {
@@ -21,9 +22,9 @@ namespace ChatLibrary
         StreamObjectReader chatMessageStreamServer;
         private string clientId;
         private event Action<ChatMessage> messageRecievedEvent;
-        private Stream clientSocketStream;
-        private Stream serverSocketStream;
+
         private Task chatListenerTask;
+        private EventWaitHandle eventMessageReceived;
 
         public List<ChatMessage> ChatHistory { get; set; }
 
@@ -68,6 +69,7 @@ namespace ChatLibrary
                 {
                     StreamObjectReader greetingStream = new StreamObjectReader(greetingSocketStream);
                     greetingStream.WriteMessage(firstMessage);
+                    clientId = greetingStream.ReadMessage<string>();
                     socketSettings = greetingStream.ReadMessage<SocketSettings>();
                     ChatHistory = new List<ChatMessage>();
                     while (ChatHistory.Count() < 100)
@@ -87,10 +89,15 @@ namespace ChatLibrary
         {
             try
             {
-                while (serverSocket.Connected)
+                while (eventMessageReceived.WaitOne())
                 {
+                    serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
+                    if (!serverSocket.Connected)
+                        throw new Exception();
+                    chatMessageStreamServer = new StreamObjectReader(new NetworkStream(serverSocket));
                     var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
                     messageRecievedEvent(newMessage);
+                    serverSocket.Disconnect(true);
                 }
             }
             catch(IOException)
@@ -101,49 +108,40 @@ namespace ChatLibrary
 
         public ChatConnectionSocketClient(string clientName, Action<ChatMessage> messageRecievedEvent)
         {
-
+            eventMessageReceived = new EventWaitHandle(false, EventResetMode.AutoReset, serverName + "eventMessageReceived");
             this.messageRecievedEvent += messageRecievedEvent;
             this.clientName = clientName;
             if (!Greet())
                 throw new Exception();
 
             serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
-            if (!serverSocket.Connected)
-                throw new Exception();
+
 
             clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
-            if (!clientSocket.Connected)
-                throw new Exception();
 
-            clientSocketStream = new NetworkStream(clientSocket);
-            serverSocketStream = new NetworkStream(serverSocket);
-            chatMessageStreamClient = new StreamObjectReader(clientSocketStream);
-            chatMessageStreamServer = new StreamObjectReader(serverSocketStream);
+            
+            
 
             chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
         }
 
         public void Dispose()
         {
-            clientSocketStream.Dispose();
-            serverSocketStream.Dispose();
+
             clientSocket.Dispose();
             serverSocket.Dispose();
         }
 
         public bool SendMessage(string message)
         {
-            if (serverSocket.Connected)
-            {
-                chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
+            if (!clientSocket.Connected)
+                throw new Exception();
+            chatMessageStreamClient = new StreamObjectReader(new NetworkStream(clientSocket));
+            chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
+            clientSocket.Disconnect(true);
+            return true;
+
         }
     }
 }
