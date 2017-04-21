@@ -28,13 +28,7 @@ namespace ChatLibrary
         public List<ChatMessage> ChatHistory { get; set; }
 
 
-        private int clientSocketPort
-        {
-            get
-            {
-                return Convert.ToInt32(ConfigurationManager.AppSettings["clientSocketPort"]);
-            }
-        }
+        private SocketSettings socketSettings;
 
         private string serverName
         {
@@ -44,13 +38,7 @@ namespace ChatLibrary
             }
         }
 
-        private int serverSocketPort
-        {
-            get
-            {
-                return Convert.ToInt32(ConfigurationManager.AppSettings["serverSocketPort"]);
-            }
-        }
+        
 
         private List<int> greetingSocketPorts
         {
@@ -80,7 +68,7 @@ namespace ChatLibrary
                 {
                     StreamObjectReader greetingStream = new StreamObjectReader(greetingSocketStream);
                     greetingStream.WriteMessage(firstMessage);
-                    clientId = greetingStream.ReadMessage<string>();
+                    socketSettings = greetingStream.ReadMessage<SocketSettings>();
                     ChatHistory = new List<ChatMessage>();
                     while (ChatHistory.Count() < 100)
                     {
@@ -120,12 +108,12 @@ namespace ChatLibrary
                 throw new Exception();
 
             serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            serverSocket.Connect(serverName, serverSocketPort);
+            serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
             if (!serverSocket.Connected)
                 throw new Exception();
 
             clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            clientSocket.Connect(serverName, clientSocketPort);
+            clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
             if (!clientSocket.Connected)
                 throw new Exception();
 

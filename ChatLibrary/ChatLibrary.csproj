@@ -47,6 +47,7 @@
     <Compile Include="ChatConnectionPipeClient.cs" />
     <Compile Include="ChatConnectionServer.cs" />
     <Compile Include="Models\ChatMessage.cs" />
+    <Compile Include="Models\SocketSettings.cs" />
     <Compile Include="StreamObjectReader.cs" />
     <Compile Include="ChatMessageClientServerStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

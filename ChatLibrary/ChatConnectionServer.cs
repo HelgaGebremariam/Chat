@@ -150,8 +150,13 @@ namespace ChatLibrary
                 Socket handler = listener.EndAccept(result);
                 var greetingStream = new StreamObjectReader(new NetworkStream(handler));
                 var firstMessage = greetingStream.ReadMessage<ChatMessage>();
-                var clientId = clientUniqueIdPostfix;
-                greetingStream.WriteMessage<string>(clientId);
+                SocketSettings socketSettings = new SocketSettings()
+                {
+                    ClientSocketPort = clientSocketPort,
+                    ServerSocketPort = serverSocketPort
+                };
+
+                greetingStream.WriteMessage<SocketSettings>(socketSettings);
                 SendChatHistory(greetingStream);
                 handler.Close();
                 messageRecievedEvent(new ChatMessage() { UserName = firstMessage.UserName, Message = "Joined", MessageSendDate = DateTime.Now });
@@ -166,7 +171,7 @@ namespace ChatLibrary
 
                     var chatClient = new ChatClient()
                     {
-                        ClientId = clientId,
+                        ClientId = clientUniqueIdPostfix,
                         ClientName = firstMessage.UserName,
                         ClientSocket = serverHandler,
                         IsActive = true
