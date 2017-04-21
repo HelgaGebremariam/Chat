@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChatConnectionSocketClient.cs" />
     <Compile Include="Interfaces\IChatConnectionClient.cs" />
     <Compile Include="Models\ChatClient.cs" />
     <Compile Include="ChatConnectionPipeClient.cs" />

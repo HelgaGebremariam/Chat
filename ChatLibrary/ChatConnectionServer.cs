@@ -11,6 +11,7 @@ using System.Configuration;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
 using ChatLibrary.Models;
+using System.Net;
 
 namespace ChatLibrary
 {
@@ -56,6 +57,30 @@ namespace ChatLibrary
             }
         }
 
+        private int clientSocketPort
+        {
+            get
+            {
+                return Convert.ToInt32(ConfigurationManager.AppSettings["clientSocketPort"]);
+            }
+        }
+
+        private int serverSocketPort
+        {
+            get
+            {
+                return Convert.ToInt32(ConfigurationManager.AppSettings["serverSocketPort"]);
+            }
+        }
+
+        private int greetingSocketPort
+        {
+            get
+            {
+                return Convert.ToInt32(ConfigurationManager.AppSettings["greetingSocketPort"]);
+            }
+        }
+
 
         private void SendChatHistory(StreamObjectReader chatMessageStream)
         {
@@ -70,7 +95,7 @@ namespace ChatLibrary
             chatMessageStream.WriteMessage(defaultMessage);
         }
 
-        public void GreetNewClient()
+        public void GreetNewPipeClient()
         {
             var pipeGreeting = new NamedPipeServerStream(greetingPipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                 pipeGreeting.BeginWaitForConnection((IAsyncResult asyncResult) =>
@@ -83,7 +108,6 @@ namespace ChatLibrary
                     SendChatHistory(greetingStream);
                     pipeGreeting.WaitForPipeDrain();
                     pipeGreeting.Close();
-                    
                     messageRecievedEvent(new ChatMessage() { UserName = firstMessage.UserName, Message = "Joined", MessageSendDate = DateTime.Now });
                     NamedPipeServerStream pipeServer = new NamedPipeServerStream(serverPipeName + clientId, PipeDirection.Out, maxClientsNumber, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                     pipeServer.BeginWaitForConnection((IAsyncResult ar) =>
@@ -105,13 +129,59 @@ namespace ChatLibrary
 
                     }, new object());
 
-                    GreetNewClient();
+                    GreetNewPipeClient();
 
                 }, new object());
         }
 
         public void GreetNewSocketClient()
         {
+            var hostName = "localhost";
+            IPHostEntry ipHostInfo = Dns.GetHostEntry(hostName);
+            IPEndPoint localEP = new IPEndPoint(ipHostInfo.AddressList[1], greetingSocketPort);
+
+            Socket greetingListener = new Socket(localEP.Address.AddressFamily,
+                SocketType.Stream, ProtocolType.Tcp);
+            greetingListener.Bind(localEP);
+            greetingListener.Listen(1);
+
+            greetingListener.BeginAccept((IAsyncResult result)=> {
+                var listener = result.AsyncState as Socket;
+                Socket handler = listener.EndAccept(result);
+                var greetingStream = new StreamObjectReader(new NetworkStream(handler));
+                var firstMessage = greetingStream.ReadMessage<ChatMessage>();
+                var clientId = clientUniqueIdPostfix;
+                greetingStream.WriteMessage<string>(clientId);
+                SendChatHistory(greetingStream);
+                handler.Close();
+                messageRecievedEvent(new ChatMessage() { UserName = firstMessage.UserName, Message = "Joined", MessageSendDate = DateTime.Now });
+
+                localEP = new IPEndPoint(ipHostInfo.AddressList[1], serverSocketPort);
+                Socket serverSocket = new Socket(localEP.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                serverSocket.Bind(localEP);
+                serverSocket.Listen(1);
+
+                serverSocket.BeginAccept((IAsyncResult asyncResult) => {
+                    Socket serverHandler = serverSocket.EndAccept(asyncResult);
+
+                    var chatClient = new ChatClient()
+                    {
+                        ClientId = clientId,
+                        ClientName = firstMessage.UserName,
+                        ClientSocket = serverHandler,
+                        IsActive = true
+                    };
+                    chatClients.Add(chatClient);
+                    chatClient.ListenerTask = Task.Factory.StartNew(() =>
+                    {
+                        ChatListenerSocket(chatClient);
+                    });
+
+                }, serverSocket);
+            },
+                greetingListener);
+
+
 
         }
 
@@ -131,6 +201,24 @@ namespace ChatLibrary
                     messageRecievedEvent(message);
                 }
             }
+        }
+
+        private void ChatListenerSocket(ChatClient chatClient)
+        {
+            //using (var chatMessageStream = new ChatMessageClientServerStream(chatClient.ClientName, chatClient.ClientId))
+            //{
+            //    while (chatClient.IsActive && chatClient.ClientPipe.IsConnected)
+            //    {
+            //        var message = chatMessageStream.GetNextMessage();
+            //        if (message == null)
+            //        {
+            //            chatClient.Dispose();
+            //            return;
+            //        }
+            //        ChatHistory.Add(message);
+            //        messageRecievedEvent(message);
+            //    }
+            //}
         }
 
 
@@ -185,7 +273,7 @@ namespace ChatLibrary
             ChatHistory.Add(message);
             Task.Factory.StartNew(() =>
             {
-                GreetNewClient();
+                GreetNewPipeClient();
             });
             Task.Factory.StartNew(() =>
             {

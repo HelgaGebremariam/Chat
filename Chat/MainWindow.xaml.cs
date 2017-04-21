@@ -63,7 +63,7 @@ namespace Chat
             
             try
             {
-                chatClient = new ChatConnectionPipeClient(textBoxClientName.Text, AddMessage);
+                chatClient = new ChatConnectionSocketClient(textBoxClientName.Text, AddMessage);
                 ShowChatHistory();
                 ConnectedState();
             }
