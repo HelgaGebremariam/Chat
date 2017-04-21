@@ -40,7 +40,7 @@ namespace ChatLibrary
         {
             get
             {
-                return ConfigurationManager.AppSettings["serverPipeName"];
+                return ConfigurationManager.AppSettings["serverPipeName"] + clientName;
             }
         }
 
@@ -86,14 +86,19 @@ namespace ChatLibrary
 			this.messageRecievedEvent += messageRecievedEvent;
 			this.clientName = clientName;
 			Greet();
-			pipeClient = new NamedPipeClientStream(serverName, clientPipeName, PipeDirection.Out);
-			pipeClient.Connect();
-			chatMessageStreamClient = new ChatMessageExchanger(pipeClient);
+
+
 
 			pipeServer = new NamedPipeClientStream(serverName, serverPipeName, PipeDirection.In);
 			pipeServer.Connect();
 			chatMessageStreamServer = new ChatMessageExchanger(pipeServer);
-			Thread server = new Thread(ChatListener);
+
+
+            pipeClient = new NamedPipeClientStream(serverName, clientPipeName, PipeDirection.Out);
+            pipeClient.Connect();
+            chatMessageStreamClient = new ChatMessageExchanger(pipeClient);
+
+            Thread server = new Thread(ChatListener);
 			server.Start();
 
 		}

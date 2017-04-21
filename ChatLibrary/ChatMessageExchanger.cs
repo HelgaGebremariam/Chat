@@ -47,6 +47,8 @@ namespace ChatLibrary
 
             len = ioStream.ReadByte() * 256;
             len += ioStream.ReadByte();
+            if (len <= 0)
+                return null;
             byte[] inBuffer = new byte[len];
             ioStream.Read(inBuffer, 0, len);
 
