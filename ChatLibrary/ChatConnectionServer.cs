@@ -213,7 +213,7 @@ namespace ChatLibrary
             listener.Bind(localEP);
             listener.Listen(1);
             var handler = listener.Accept();
-            using (var chatMessageStream = new ChatMessageClientServerStream(new NetworkStream(handler), chatClient.ClientName, chatClient.ClientId))
+            using (var chatMessageStream = new ChatMessageClientServerStream(new NetworkStream(handler), chatClient.ClientId, chatClient.ClientName))
             {
                 while (chatClient.IsActive && chatClient.ClientSocket.Connected)
                 {
