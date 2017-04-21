@@ -91,10 +91,17 @@ namespace ChatLibrary
 
         private void ChatListener()
         {
-            while (serverSocket.Connected)
+            try
             {
-                var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
-                messageRecievedEvent(newMessage);
+                while (serverSocket.Connected)
+                {
+                    var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
+                    messageRecievedEvent(newMessage);
+                }
+            }
+            catch(IOException ex)
+            {
+
             }
         }
 

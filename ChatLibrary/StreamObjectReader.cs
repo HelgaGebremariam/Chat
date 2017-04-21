@@ -43,6 +43,8 @@ namespace ChatLibrary
 
         public T ReadMessage<T>() where T : class
         {
+            if (ioStream.CanRead == false)
+                return null;
             int len = 0;
             len = ioStream.ReadByte() * 256;
             if (len < 0)
