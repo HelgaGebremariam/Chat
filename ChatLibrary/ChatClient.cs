@@ -12,11 +12,22 @@ using System.Net.Sockets;
 
 namespace ChatLibrary
 {
-    public class ChatClient
+    public class ChatClient : IDisposable
     {
         public string ClientId { get; set; }
         public string ClientName { get; set; }
         public NamedPipeServerStream ClientPipe { get; set; }
         public Socket ClientSocket { get; set; }
+        public Task ListenerTask { get; set; }
+        public bool IsActive { get; set; }
+        public void Dispose()
+        {
+            IsActive = false;
+            if (ClientPipe != null)
+                ClientPipe.Dispose();
+            if(ClientSocket != null)
+                ClientSocket.Dispose();
+            ListenerTask.Dispose();
+        }
     }
 }

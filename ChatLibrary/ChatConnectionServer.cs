@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO.Pipes;
@@ -8,10 +9,11 @@ using System.IO;
 using System.Threading;
 using System.Configuration;
 using System.Collections.Concurrent;
+using System.Net.Sockets;
 
 namespace ChatLibrary
 {
-    public class ChatConnectionServer
+    public class ChatConnectionServer : IDisposable
     {
         public ConcurrentBag<ChatMessage> ChatHistory;
         private ConcurrentBag<ChatClient> chatClients;
@@ -86,14 +88,30 @@ namespace ChatLibrary
                     pipeServer.BeginWaitForConnection((IAsyncResult ar) =>
                     {
                         pipeServer.EndWaitForConnection(ar);
-                        var chatClient = new ChatClient() {ClientId = clientId, ClientName = firstMessage.UserName, ClientPipe = pipeServer };
+                        var chatClient = new ChatClient()
+                        {
+                            ClientId = clientId,
+                            ClientName = firstMessage.UserName,
+                            ClientPipe = pipeServer,
+                            IsActive = true
+                        };
                         chatClients.Add(chatClient);
-                        ChatListener(chatClient);
+                        chatClient.ListenerTask = Task.Factory.StartNew(() =>
+                        {
+                            ChatListener(chatClient);
+                        });
+                        
+
                     }, new object());
 
                     GreetNewClient();
 
                 }, new object());
+        }
+
+        public void GreetNewSocketClient()
+        {
+
         }
 
         private void ChatListener(ChatClient chatClient)
@@ -114,20 +132,30 @@ namespace ChatLibrary
         {
             foreach(var client in chatClients)
             {
-                //if (pipe.IsConnected)
-                //{
-                    var messageStream = new StreamObjectReader(client.ClientPipe);
-                    messageStream.WriteMessage(message);
-                //}
-                //else
-                //{
-                //    messageRecievedEvent(new ChatMessage() { UserName = pipe.GetImpersonationUserName(), Message = "Leaved", MessageSendDate = DateTime.Now });
-
-                //}
+                if (client.IsActive)
+                {
+                    if (client.ClientPipe != null && client.ClientPipe.IsConnected)
+                    {
+                        var messageStream = new StreamObjectReader(client.ClientPipe);
+                        messageStream.WriteMessage(message);
+                    }
+                    else
+                    {
+                        client.Dispose();
+                    }
+                }
             }
         }
 
-		public ChatConnectionServer(Action<ChatMessage> messageRecievedEvent)
+        public void Dispose()
+        {
+            foreach (var client in chatClients)
+            {
+                client.Dispose();
+            }
+        }
+
+        public ChatConnectionServer(Action<ChatMessage> messageRecievedEvent)
         {
 
 			this.messageRecievedEvent += messageRecievedEvent;
@@ -153,7 +181,11 @@ namespace ChatLibrary
             {
                 GreetNewClient();
             });
-            
+            Task.Factory.StartNew(() =>
+            {
+                GreetNewSocketClient();
+            });
+
 
         }
     }

@@ -10,15 +10,16 @@ using System.Configuration;
 
 namespace ChatLibrary
 {
-    public class ChatConnectionClient
+    public class ChatConnectionClient : IDisposable
     {
 		public List<ChatMessage> ChatHistory { get; set; }
         private StreamObjectReader chatMessageStreamClient;
-		private StreamObjectReader chatMessageStreamServer;
-		private string clientName;
+        private StreamObjectReader chatMessageStreamServer;
+        private string clientName;
         NamedPipeClientStream pipeClient;
         NamedPipeClientStream pipeServer;
 		private event Action<ChatMessage> messageRecievedEvent;
+        
         private string clientId { get; set; }
 
         private string clientPipeName
@@ -55,7 +56,8 @@ namespace ChatLibrary
 
 		public void ChatListener()
 		{
-			while(true)
+            
+			while (true)
 			{
 				var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
 				messageRecievedEvent(newMessage);
@@ -91,8 +93,7 @@ namespace ChatLibrary
 
 			pipeServer = new NamedPipeClientStream(serverName, serverPipeName, PipeDirection.In);
 			pipeServer.Connect();
-			chatMessageStreamServer = new StreamObjectReader(pipeServer);
-
+            chatMessageStreamServer = new StreamObjectReader(pipeServer);
 
             pipeClient = new NamedPipeClientStream(serverName, clientPipeName, PipeDirection.Out);
             pipeClient.Connect();
@@ -108,5 +109,10 @@ namespace ChatLibrary
             chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
         }
 
+        public void Dispose()
+        {
+            pipeClient.Dispose();
+            pipeServer.Dispose();
+        }
     }
 }

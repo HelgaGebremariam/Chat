@@ -39,7 +39,9 @@ namespace ChatServer
 
 		public void AddMessage(ChatMessage message)
 		{
-			var del = new Action<string>(AddMessageCrossThread);
+            if (message == null)
+                return;
+            var del = new Action<string>(AddMessageCrossThread);
 			Dispatcher.Invoke(del, message.ToString());
 			
 		}
@@ -49,5 +51,9 @@ namespace ChatServer
 			textBlockChatHistory.Text += text;
 		}
 
+        public void window_Closed(object sender, EventArgs e)
+        {
+            chatConnectionServer.Dispose();
+        }
     }
 }

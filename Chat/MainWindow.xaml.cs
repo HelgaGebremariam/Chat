@@ -68,5 +68,11 @@ namespace Chat
 		{
 			textBoxChatMessages.Text += text;
 		}
-	}
+
+        public void window_Closed(object sender, EventArgs e)
+        {
+            chatClient.Dispose();
+        }
+
+    }
 }

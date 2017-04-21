@@ -38,6 +38,8 @@ namespace ChatLibrary
 		public ChatMessage GetNextMessage()
 		{
 			ChatMessage message = chatMessageExchanger.ReadMessage<ChatMessage>();
+            if (message == null)
+                return null;
 			message.UserName = clientName;
 			message.MessageSendDate = DateTime.Now;
 			return message;

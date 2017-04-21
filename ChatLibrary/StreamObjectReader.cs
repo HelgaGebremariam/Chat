@@ -46,9 +46,10 @@ namespace ChatLibrary
             int len = 0;
 
             len = ioStream.ReadByte() * 256;
-            len += ioStream.ReadByte();
             if (len <= 0)
                 return null;
+            len += ioStream.ReadByte();
+
             byte[] inBuffer = new byte[len];
             ioStream.Read(inBuffer, 0, len);
 
@@ -57,6 +58,8 @@ namespace ChatLibrary
 
         public int WriteMessage<T>(T outputMessage)
         {
+            if (outputMessage == null)
+                return 0;
             byte[] outBuffer = ObjectToByteArray(outputMessage);
             int len = outBuffer.Length;
             if (len > UInt16.MaxValue)

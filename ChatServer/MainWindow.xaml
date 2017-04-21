@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ChatServer"
         mc:Ignorable="d"
-        Title="Chat" Height="377.61" Width="537.993">
+        Title="Chat" Height="377.61" Width="537.993"
+        Closed="window_Closed">
     <Grid>
         <ScrollViewer HorizontalAlignment="Left" Height="231" Margin="10,30,0,0" VerticalAlignment="Top" Width="496">
             <TextBlock x:Name="textBlockChatHistory" HorizontalAlignment="Left" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="486"/>
