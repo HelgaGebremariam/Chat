@@ -57,7 +57,7 @@ namespace ChatLibrary
 		public void ChatListener()
 		{
             
-			while (true)
+			while (pipeServer.IsConnected)
 			{
 				var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
 				messageRecievedEvent(newMessage);
@@ -111,6 +111,8 @@ namespace ChatLibrary
 
         public void Dispose()
         {
+            pipeClient.Close();
+            pipeServer.Close();
             pipeClient.Dispose();
             pipeServer.Dispose();
         }

@@ -44,12 +44,12 @@ namespace ChatLibrary
         public T ReadMessage<T>() where T : class
         {
             int len = 0;
-
             len = ioStream.ReadByte() * 256;
-            if (len <= 0)
+            if (len < 0)
                 return null;
             len += ioStream.ReadByte();
-
+            if (len <= 0)
+                return null;
             byte[] inBuffer = new byte[len];
             ioStream.Read(inBuffer, 0, len);
 

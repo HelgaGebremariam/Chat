@@ -27,7 +27,6 @@ namespace ChatLibrary
                 ClientPipe.Dispose();
             if(ClientSocket != null)
                 ClientSocket.Dispose();
-            ListenerTask.Dispose();
         }
     }
 }

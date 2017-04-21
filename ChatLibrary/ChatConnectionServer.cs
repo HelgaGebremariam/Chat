@@ -118,9 +118,14 @@ namespace ChatLibrary
         {
             using (var chatMessageStream = new ChatMessageClientServerStream(chatClient.ClientName, chatClient.ClientId))
             {
-                while (true)
+                while (chatClient.IsActive && chatClient.ClientPipe.IsConnected)
                 {
                     var message = chatMessageStream.GetNextMessage();
+                    if (message == null)
+                    {
+                        chatClient.Dispose();
+                        return;
+                    }
                     ChatHistory.Add(message);
                     messageRecievedEvent(message);
                 }
