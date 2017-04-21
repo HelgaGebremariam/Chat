@@ -7,6 +7,8 @@
         mc:Ignorable="d"
         Title="Chat" Height="377.61" Width="537.993">
     <Grid>
-        <TextBlock x:Name="textBlockChatHistory" HorizontalAlignment="Left" Margin="25,26,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Height="240" Width="444"/>
+        <ScrollViewer HorizontalAlignment="Left" Height="231" Margin="10,30,0,0" VerticalAlignment="Top" Width="496">
+            <TextBlock x:Name="textBlockChatHistory" HorizontalAlignment="Left" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="486"/>
+        </ScrollViewer>
     </Grid>
 </Window>

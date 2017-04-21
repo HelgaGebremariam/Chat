@@ -41,10 +41,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChatClient.cs" />
     <Compile Include="ChatConnectionClient.cs" />
     <Compile Include="ChatConnectionServer.cs" />
     <Compile Include="ChatMessage.cs" />
-    <Compile Include="ChatMessageExchanger.cs" />
+    <Compile Include="StreamObjectReader.cs" />
     <Compile Include="ChatMessageClientServerStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

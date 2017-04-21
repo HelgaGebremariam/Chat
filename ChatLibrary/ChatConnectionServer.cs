@@ -14,10 +14,20 @@ namespace ChatLibrary
     public class ChatConnectionServer
     {
         public ConcurrentBag<ChatMessage> ChatHistory;
-        private ConcurrentBag<NamedPipeServerStream> clientPipes;
-
+        private ConcurrentBag<ChatClient> chatClients;
 
         private event Action<ChatMessage> messageRecievedEvent;
+
+        private int clientsCounter = 0;
+        private string clientUniqueIdPostfix
+        {
+            get
+            {
+                string uniqueName = clientsCounter.ToString();
+                clientsCounter++;
+                return uniqueName;
+            }
+        }
 
         private int maxClientsNumber
         {
@@ -44,7 +54,7 @@ namespace ChatLibrary
         }
 
 
-        private void SendChatHistory(ChatMessageExchanger chatMessageStream)
+        private void SendChatHistory(StreamObjectReader chatMessageStream)
         {
             if (ChatHistory != null)
             {
@@ -59,47 +69,61 @@ namespace ChatLibrary
 
         public void GreetNewClient()
         {
-            NamedPipeServerStream pipeGreeting = new NamedPipeServerStream(greetingPipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-            pipeGreeting.BeginWaitForConnection((IAsyncResult asyncResult) =>
-            {
-                pipeGreeting.EndWaitForConnection(asyncResult);
-                var greetingStream = new ChatMessageExchanger(pipeGreeting);
-                var firstMessage = greetingStream.ReadMessage();
-                SendChatHistory(greetingStream);
-                pipeGreeting.WaitForPipeDrain();
-                pipeGreeting.Close();
-
-                NamedPipeServerStream pipeServer = new NamedPipeServerStream(serverPipeName + firstMessage.UserName, PipeDirection.Out, maxClientsNumber, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-                pipeServer.BeginWaitForConnection((IAsyncResult ar) =>
+            var pipeGreeting = new NamedPipeServerStream(greetingPipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                pipeGreeting.BeginWaitForConnection((IAsyncResult asyncResult) =>
                 {
-                    pipeServer.EndWaitForConnection(ar);
-                    clientPipes.Add(pipeServer);
-                    ChatListener(firstMessage.UserName);
+                    pipeGreeting.EndWaitForConnection(asyncResult);
+                    var greetingStream = new StreamObjectReader(pipeGreeting);
+                    var firstMessage = greetingStream.ReadMessage<ChatMessage>();
+                    var clientId = clientUniqueIdPostfix;
+                    greetingStream.WriteMessage<string>(clientId);
+                    SendChatHistory(greetingStream);
+                    pipeGreeting.WaitForPipeDrain();
+                    pipeGreeting.Close();
+                    
+                    messageRecievedEvent(new ChatMessage() { UserName = firstMessage.UserName, Message = "Joined", MessageSendDate = DateTime.Now });
+                    NamedPipeServerStream pipeServer = new NamedPipeServerStream(serverPipeName + clientId, PipeDirection.Out, maxClientsNumber, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    pipeServer.BeginWaitForConnection((IAsyncResult ar) =>
+                    {
+                        pipeServer.EndWaitForConnection(ar);
+                        var chatClient = new ChatClient() {ClientId = clientId, ClientName = firstMessage.UserName, ClientPipe = pipeServer };
+                        chatClients.Add(chatClient);
+                        ChatListener(chatClient);
+                    }, new object());
+
+                    GreetNewClient();
+
                 }, new object());
-
-                GreetNewClient();
-
-            }, new object());
         }
 
-        private void ChatListener(string userName)
+        private void ChatListener(ChatClient chatClient)
         {
-            var chatMessageStream = new ChatMessageClientServerStream(userName);
-            while (true)
+            using (var chatMessageStream = new ChatMessageClientServerStream(chatClient.ClientName, chatClient.ClientId))
             {
-                var message = chatMessageStream.GetNextMessage();
-                ChatHistory.Add(message);
-                messageRecievedEvent(message);
+                while (true)
+                {
+                    var message = chatMessageStream.GetNextMessage();
+                    ChatHistory.Add(message);
+                    messageRecievedEvent(message);
+                }
             }
         }
 
 
         public void SendMessageToClients(ChatMessage message)
         {
-            foreach(var pipe in clientPipes)
+            foreach(var client in chatClients)
             {
-                var messageStream = new ChatMessageExchanger(pipe);
-                messageStream.WriteMessage(message);
+                //if (pipe.IsConnected)
+                //{
+                    var messageStream = new StreamObjectReader(client.ClientPipe);
+                    messageStream.WriteMessage(message);
+                //}
+                //else
+                //{
+                //    messageRecievedEvent(new ChatMessage() { UserName = pipe.GetImpersonationUserName(), Message = "Leaved", MessageSendDate = DateTime.Now });
+
+                //}
             }
         }
 
@@ -108,7 +132,7 @@ namespace ChatLibrary
 
 			this.messageRecievedEvent += messageRecievedEvent;
             this.messageRecievedEvent += SendMessageToClients;
-            clientPipes = new ConcurrentBag<NamedPipeServerStream>();
+            chatClients = new ConcurrentBag<ChatClient>();
             ChatHistory = new ConcurrentBag<ChatMessage>();
             ChatMessage message = new ChatMessage()
             {

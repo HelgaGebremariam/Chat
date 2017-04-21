@@ -10,16 +10,16 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace ChatLibrary
 {
-    public class ChatMessageExchanger
+    public class StreamObjectReader
     {
         private Stream ioStream;
 
-        public ChatMessageExchanger(Stream ioStream)
+        public StreamObjectReader(Stream ioStream)
         {
             this.ioStream = ioStream;
         }
 
-        public static byte[] ObjectToByteArray(Object obj)
+        private byte[] ObjectToByteArray(Object obj)
         {
             BinaryFormatter bf = new BinaryFormatter();
             using (var ms = new MemoryStream())
@@ -29,7 +29,7 @@ namespace ChatLibrary
             }
         }
 
-        public static Object ByteArrayToObject(byte[] arrBytes)
+        private Object ByteArrayToObject(byte[] arrBytes)
         {
             using (var memStream = new MemoryStream())
             {
@@ -41,7 +41,7 @@ namespace ChatLibrary
             }
         }
 
-        public ChatMessage ReadMessage()
+        public T ReadMessage<T>() where T : class
         {
             int len = 0;
 
@@ -52,10 +52,10 @@ namespace ChatLibrary
             byte[] inBuffer = new byte[len];
             ioStream.Read(inBuffer, 0, len);
 
-            return ByteArrayToObject(inBuffer) as ChatMessage;
+            return ByteArrayToObject(inBuffer) as T;
         }
 
-        public int WriteMessage(ChatMessage outputMessage)
+        public int WriteMessage<T>(T outputMessage)
         {
             byte[] outBuffer = ObjectToByteArray(outputMessage);
             int len = outBuffer.Length;

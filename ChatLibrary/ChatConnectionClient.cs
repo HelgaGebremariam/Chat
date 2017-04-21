@@ -13,22 +13,23 @@ namespace ChatLibrary
     public class ChatConnectionClient
     {
 		public List<ChatMessage> ChatHistory { get; set; }
-        private ChatMessageExchanger chatMessageStreamClient;
-		private ChatMessageExchanger chatMessageStreamServer;
+        private StreamObjectReader chatMessageStreamClient;
+		private StreamObjectReader chatMessageStreamServer;
 		private string clientName;
         NamedPipeClientStream pipeClient;
         NamedPipeClientStream pipeServer;
 		private event Action<ChatMessage> messageRecievedEvent;
+        private string clientId { get; set; }
 
-		private string clientPipeName
+        private string clientPipeName
         {
             get
             {
-                return ConfigurationManager.AppSettings["clientPipeName"] + clientName;
+                return ConfigurationManager.AppSettings["clientPipeName"] + clientId;
             }
         }
 
-		private string greetingPipeName
+        private string greetingPipeName
 		{
 			get
 			{
@@ -40,7 +41,7 @@ namespace ChatLibrary
         {
             get
             {
-                return ConfigurationManager.AppSettings["serverPipeName"] + clientName;
+                return ConfigurationManager.AppSettings["serverPipeName"] + clientId;
             }
         }
 
@@ -56,7 +57,7 @@ namespace ChatLibrary
 		{
 			while(true)
 			{
-				var newMessage = chatMessageStreamServer.ReadMessage();
+				var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
 				messageRecievedEvent(newMessage);
 			}
 		}
@@ -67,13 +68,14 @@ namespace ChatLibrary
 			greetingPipe.Connect();
 			ChatMessage firstMessage = new ChatMessage() { UserName = clientName };
 
-			ChatMessageExchanger greetingStream = new ChatMessageExchanger(greetingPipe);
+			StreamObjectReader greetingStream = new StreamObjectReader(greetingPipe);
 			greetingStream.WriteMessage(firstMessage);
 			greetingPipe.WaitForPipeDrain();
+            clientId = greetingStream.ReadMessage<string>();
 			ChatHistory = new List<ChatMessage>();
             while (ChatHistory.Count() < 100)
             {
-                var message = greetingStream.ReadMessage();
+                var message = greetingStream.ReadMessage<ChatMessage>();
                 if (message.MessageSendDate == DateTime.MinValue)
                     break;
                 ChatHistory.Add(message);
@@ -87,16 +89,14 @@ namespace ChatLibrary
 			this.clientName = clientName;
 			Greet();
 
-
-
 			pipeServer = new NamedPipeClientStream(serverName, serverPipeName, PipeDirection.In);
 			pipeServer.Connect();
-			chatMessageStreamServer = new ChatMessageExchanger(pipeServer);
+			chatMessageStreamServer = new StreamObjectReader(pipeServer);
 
 
             pipeClient = new NamedPipeClientStream(serverName, clientPipeName, PipeDirection.Out);
             pipeClient.Connect();
-            chatMessageStreamClient = new ChatMessageExchanger(pipeClient);
+            chatMessageStreamClient = new StreamObjectReader(pipeClient);
 
             Thread server = new Thread(ChatListener);
 			server.Start();

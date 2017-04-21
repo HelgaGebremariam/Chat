@@ -57,7 +57,10 @@ namespace Chat
 		public void AddMessage(ChatMessage message)
 		{
 			var del = new Action<string>(AddMessageCrossThread);
-			Dispatcher.Invoke(del, message.ToString());
+            if (message != null)
+            {
+                Dispatcher.Invoke(del, message.ToString());
+            }
 
 		}
 
