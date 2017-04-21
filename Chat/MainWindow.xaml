@@ -10,13 +10,14 @@
     <Grid>
         <TextBox x:Name="textBoxNewMessage" HorizontalAlignment="Left" Height="23" Margin="60,207,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="407"/>
         
-        <Button x:Name="buttonSendMessage" Content="Send" HorizontalAlignment="Left" Margin="392,261,0,0" VerticalAlignment="Top" Width="75" Click="buttonSendMessage_Click"/>
+        <Button x:Name="buttonSendMessage" Content="Send" HorizontalAlignment="Left" Margin="392,261,0,0" VerticalAlignment="Top" Width="75" Click="buttonSendMessage_Click" IsEnabled="False"/>
         <Button x:Name="buttonConnect" Content="Connect" HorizontalAlignment="Left" Margin="100,261,0,0" VerticalAlignment="Top" Width="75" Click="buttonConnect_Click"/>
-        <TextBox x:Name="textBoxClientName" HorizontalAlignment="Left" Height="23" Margin="150,14,0,0" TextWrapping="Wrap" Text="defaultName" VerticalAlignment="Top" Width="317" TextChanged="textBoxClientName_TextChanged"/>
+        <TextBox x:Name="textBoxClientName" HorizontalAlignment="Left" Height="23" Margin="150,14,0,0" TextWrapping="Wrap" Text="Unknown" VerticalAlignment="Top" Width="317"/>
         <Label x:Name="labelClientName" Content="Your name" HorizontalAlignment="Left" Margin="60,10,0,0" VerticalAlignment="Top" Width="75"/>
         <ScrollViewer HorizontalAlignment="Left" Height="118" Margin="60,64,0,0" VerticalAlignment="Top" Width="421">
             <TextBlock x:Name="textBoxChatMessages" HorizontalAlignment="Left" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="403"/>
         </ScrollViewer>
+        <Label x:Name="labelServerError" Content="Server error" HorizontalAlignment="Left" Margin="216,285,0,0" VerticalAlignment="Top" Width="106" Visibility="Hidden"/>
 
     </Grid>
 </Window>

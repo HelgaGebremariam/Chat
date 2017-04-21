@@ -20,7 +20,7 @@ namespace ChatLibrary
         NamedPipeClientStream pipeServer;
 		private event Action<ChatMessage> messageRecievedEvent;
         private Task chatListenerTask;
-
+        private int connectionTimeout = 1000;
         private string clientId { get; set; }
 
         private string clientPipeName
@@ -64,10 +64,12 @@ namespace ChatLibrary
 			}
 		}
 
-		public void Greet()
+		public bool Greet()
 		{
 			NamedPipeClientStream greetingPipe = new NamedPipeClientStream(serverName, greetingPipeName, PipeDirection.InOut);
-			greetingPipe.Connect();
+            greetingPipe.Connect(connectionTimeout);
+            if (!greetingPipe.IsConnected)
+                return false;
 			ChatMessage firstMessage = new ChatMessage() { UserName = clientName };
 
 			StreamObjectReader greetingStream = new StreamObjectReader(greetingPipe);
@@ -83,28 +85,41 @@ namespace ChatLibrary
                 ChatHistory.Add(message);
             }
 			greetingPipe.Close();
+            return true;
 		}
 
 		public ChatConnectionClient(string clientName, Action<ChatMessage> messageRecievedEvent)
 		{
 			this.messageRecievedEvent += messageRecievedEvent;
 			this.clientName = clientName;
-			Greet();
-
-			pipeServer = new NamedPipeClientStream(serverName, serverPipeName, PipeDirection.In);
-			pipeServer.Connect();
+			if(!Greet())
+                throw new Exception();
+            pipeServer = new NamedPipeClientStream(serverName, serverPipeName, PipeDirection.In);
+            pipeServer.Connect(connectionTimeout);
+            if (!pipeServer.IsConnected)
+                throw new Exception();
             chatMessageStreamServer = new StreamObjectReader(pipeServer);
 
             pipeClient = new NamedPipeClientStream(serverName, clientPipeName, PipeDirection.Out);
-            pipeClient.Connect();
+            pipeClient.Connect(connectionTimeout);
+            if (!pipeClient.IsConnected)
+                throw new Exception();
             chatMessageStreamClient = new StreamObjectReader(pipeClient);
 
             chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
 		}
 
-        public void SendMessage(string message)
+        public bool SendMessage(string message)
         {
-            chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
+            if (pipeServer.IsConnected)
+            {
+                chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public void Dispose()

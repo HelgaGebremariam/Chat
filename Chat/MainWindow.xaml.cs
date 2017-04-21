@@ -27,15 +27,48 @@ namespace Chat
             InitializeComponent();
         }
 
+        private void InitialState()
+        {
+            buttonConnect.IsEnabled = true;
+            textBoxClientName.IsEnabled = true;
+            buttonSendMessage.IsEnabled = false;
+        }
+
+        private void ConnectedState()
+        {
+            buttonConnect.IsEnabled = false;
+            textBoxClientName.IsEnabled = false;
+            buttonSendMessage.IsEnabled = true;
+            labelServerError.Visibility = Visibility.Hidden;
+        }
+
         private void buttonSendMessage_Click(object sender, RoutedEventArgs e)
         {
-            chatClient.SendMessage(textBoxNewMessage.Text);
+            if(!chatClient.SendMessage(textBoxNewMessage.Text))
+            {
+                labelServerError.Visibility = Visibility.Visible;
+                InitialState();
+            }
         }
 
         private void buttonConnect_Click(object sender, RoutedEventArgs e)
         {
-            chatClient = new ChatConnectionClient(textBoxClientName.Text, AddMessage);
-            ShowChatHistory();
+            if(textBoxClientName.Text == string.Empty)
+            {
+                textBoxClientName.Text = "Unknown";
+            }
+            
+            try
+            {
+                chatClient = new ChatConnectionClient(textBoxClientName.Text, AddMessage);
+                ShowChatHistory();
+                ConnectedState();
+            }
+            catch(Exception ex)
+            {
+                labelServerError.Visibility = Visibility.Visible;
+            }
+
         }
 
         private void ShowChatHistory()
@@ -45,14 +78,6 @@ namespace Chat
                 textBoxChatMessages.Text += chatClient.ChatHistory[i].ToString();
             }
         }
-
-		private void textBoxClientName_TextChanged(object sender, TextChangedEventArgs e)
-		{
-			if(textBoxClientName.Text == string.Empty)
-			{
-				textBoxClientName.Text = "DefaultName";
-			}
-		}
 
 		public void AddMessage(ChatMessage message)
 		{
