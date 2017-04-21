@@ -110,12 +110,12 @@ namespace ChatLibrary
 
             serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             serverSocket.Connect(serverName, serverSocketPort);
-            if (serverSocket.Connected)
+            if (!serverSocket.Connected)
                 throw new Exception();
 
             clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             clientSocket.Connect(serverName, clientSocketPort);
-            if (clientSocket.Connected)
+            if (!clientSocket.Connected)
                 throw new Exception();
 
             clientSocketStream = new NetworkStream(clientSocket);

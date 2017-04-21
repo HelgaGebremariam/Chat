@@ -17,7 +17,7 @@ namespace ChatLibrary
 		private StreamObjectReader chatMessageExchanger;
 		private string clientName;
         private string clientId;
-		NamedPipeServerStream clientPipe;
+		Stream clientStream;
 
 		private string clientPipeName
 		{
@@ -31,12 +31,21 @@ namespace ChatLibrary
 		{
 			this.clientName = clientName;
             this.clientId = clientId;
-			clientPipe = new NamedPipeServerStream(clientPipeName, PipeDirection.In, 1);
-			clientPipe.WaitForConnection();
-			chatMessageExchanger = new StreamObjectReader(clientPipe);
+            var stream = new NamedPipeServerStream(clientPipeName, PipeDirection.In, 1);
+            stream.WaitForConnection();
+            clientStream = stream;
+            chatMessageExchanger = new StreamObjectReader(clientStream);
 		}
 
-		public ChatMessage GetNextMessage()
+        public ChatMessageClientServerStream(Stream stream, string clientId, string clientName)
+        {
+            this.clientName = clientName;
+            this.clientId = clientId;
+            clientStream = stream;
+            chatMessageExchanger = new StreamObjectReader(clientStream);
+        }
+
+        public ChatMessage GetNextMessage()
 		{
 			ChatMessage message = chatMessageExchanger.ReadMessage<ChatMessage>();
             if (message == null)
@@ -48,7 +57,7 @@ namespace ChatLibrary
 
         public void Dispose()
         {
-            clientPipe.Dispose();
+            clientStream.Dispose();
         }
     }
 }

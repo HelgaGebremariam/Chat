@@ -205,20 +205,28 @@ namespace ChatLibrary
 
         private void ChatListenerSocket(ChatClient chatClient)
         {
-            //using (var chatMessageStream = new ChatMessageClientServerStream(chatClient.ClientName, chatClient.ClientId))
-            //{
-            //    while (chatClient.IsActive && chatClient.ClientPipe.IsConnected)
-            //    {
-            //        var message = chatMessageStream.GetNextMessage();
-            //        if (message == null)
-            //        {
-            //            chatClient.Dispose();
-            //            return;
-            //        }
-            //        ChatHistory.Add(message);
-            //        messageRecievedEvent(message);
-            //    }
-            //}
+            var hostName = "localhost";
+            IPHostEntry ipHostInfo = Dns.GetHostEntry(hostName);
+            IPEndPoint localEP = new IPEndPoint(ipHostInfo.AddressList[1], clientSocketPort);
+            Socket listener = new Socket(localEP.Address.AddressFamily,
+                SocketType.Stream, ProtocolType.Tcp);
+            listener.Bind(localEP);
+            listener.Listen(1);
+            var handler = listener.Accept();
+            using (var chatMessageStream = new ChatMessageClientServerStream(new NetworkStream(handler), chatClient.ClientName, chatClient.ClientId))
+            {
+                while (chatClient.IsActive && chatClient.ClientSocket.Connected)
+                {
+                    var message = chatMessageStream.GetNextMessage();
+                    if (message == null)
+                    {
+                        chatClient.Dispose();
+                        return;
+                    }
+                    ChatHistory.Add(message);
+                    messageRecievedEvent(message);
+                }
+            }
         }
 
 
