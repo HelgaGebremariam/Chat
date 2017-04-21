@@ -116,30 +116,22 @@ namespace ChatLibrary
 
             serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
-
-            clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-
-            
-            
-
             chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
         }
 
         public void Dispose()
         {
-
-            clientSocket.Dispose();
-            serverSocket.Dispose();
         }
 
         public bool SendMessage(string message)
         {
+            clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
             if (!clientSocket.Connected)
                 throw new Exception();
             chatMessageStreamClient = new StreamObjectReader(new NetworkStream(clientSocket));
             chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
-            clientSocket.Disconnect(true);
+            clientSocket.Dispose();
             return true;
 
         }

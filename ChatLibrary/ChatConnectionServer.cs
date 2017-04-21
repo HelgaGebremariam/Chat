@@ -168,16 +168,12 @@ namespace ChatLibrary
                     IsActive = true
                 };
                 chatClients.Add(chatClient);
-                chatClient.ListenerTask = Task.Factory.StartNew(() =>
-                {
-                    ChatListenerSocket(chatClient);
-                });
-
+                GreetNewSocketClient();
 
             },
                 new object());
 
-
+            
 
         }
 
@@ -199,38 +195,31 @@ namespace ChatLibrary
             }
         }
 
-        private void ChatListenerSocket(ChatClient chatClient)
+        private void ChatListenerSocket()
         {
 
-
-            var hostName = "localhost";
-            IPHostEntry ipHostInfo = Dns.GetHostEntry(hostName);
-            IPEndPoint localEP = new IPEndPoint(ipHostInfo.AddressList[1], clientSocketPort);
-            Socket listener = new Socket(localEP.Address.AddressFamily,
-                SocketType.Stream, ProtocolType.Tcp);
-            listener.Bind(localEP);
-            listener.Listen(1);
-            var handler = listener.Accept();
-            using (var chatMessageStream = new ChatMessageClientServerStream(new NetworkStream(handler), chatClient.ClientId, chatClient.ClientName))
-            {
-                while (chatClient.IsActive)
+                clientSocket.Listen(1);
+                clientSocket.BeginAccept((IAsyncResult result) =>
                 {
-                    var message = chatMessageStream.GetNextMessage();
-                    if (message == null)
+                    var handler = clientSocket.EndAccept(result);
+
+                    using (var chatMessageStream = new ChatMessageClientServerStream(new NetworkStream(handler), string.Empty, string.Empty))
                     {
-                        chatClient.Dispose();
-                        return;
+
+                        var message = chatMessageStream.GetNextMessage();
+
+                        ChatHistory.Add(message);
+                        messageRecievedEvent(message);
+
                     }
-                    ChatHistory.Add(message);
-                    messageRecievedEvent(message);
-                }
-            }
+                    ChatListenerSocket();
+                }, new object());
         }
 
 
         public void SendMessageToClients(ChatMessage message)
         {
-            eventMessageReceived.Reset();
+            eventMessageReceived.Set();
 
             serverSocket.Listen(maxClientsNumber);
 
@@ -285,6 +274,9 @@ namespace ChatLibrary
             serverSocket.Bind(localEP);
             serverSocket.Listen(1);
 
+            localEP = new IPEndPoint(ipHostInfo.AddressList[1], clientSocketPort);
+            clientSocket = new Socket(localEP.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            clientSocket.Bind(localEP);
 
             chatClients = new ConcurrentBag<ChatClient>();
             ChatHistory = new ConcurrentBag<ChatMessage>();
@@ -310,6 +302,10 @@ namespace ChatLibrary
             Task.Factory.StartNew(() =>
             {
                 GreetNewSocketClient();
+            });
+            Task.Factory.StartNew(() =>
+            {
+                ChatListenerSocket();
             });
 
 
