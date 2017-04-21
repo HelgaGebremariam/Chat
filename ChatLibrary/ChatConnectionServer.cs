@@ -237,8 +237,14 @@ namespace ChatLibrary
                 if (client.IsActive)
                 {
                     if (client.ClientPipe != null && client.ClientPipe.IsConnected)
+                        
                     {
                         var messageStream = new StreamObjectReader(client.ClientPipe);
+                        messageStream.WriteMessage(message);
+                    }
+                    else if (client.ClientSocket != null && client.ClientSocket.Connected)
+                    {
+                        var messageStream = new StreamObjectReader(new NetworkStream(client.ClientSocket));
                         messageStream.WriteMessage(message);
                     }
                     else

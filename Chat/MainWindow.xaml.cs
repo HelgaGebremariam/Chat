@@ -34,6 +34,8 @@ namespace Chat
             buttonConnect.IsEnabled = true;
             textBoxClientName.IsEnabled = true;
             buttonSendMessage.IsEnabled = false;
+            radioButtonPipe.IsEnabled = true;
+            radioButtonSocket.IsEnabled = true;
         }
 
         private void ConnectedState()
@@ -42,6 +44,8 @@ namespace Chat
             textBoxClientName.IsEnabled = false;
             buttonSendMessage.IsEnabled = true;
             labelServerError.Visibility = Visibility.Hidden;
+            radioButtonPipe.IsEnabled = false;
+            radioButtonSocket.IsEnabled = false;
         }
 
         private void buttonSendMessage_Click(object sender, RoutedEventArgs e)
@@ -63,7 +67,10 @@ namespace Chat
             
             try
             {
-                chatClient = new ChatConnectionSocketClient(textBoxClientName.Text, AddMessage);
+                if(radioButtonPipe.IsChecked == true)
+                    chatClient = new ChatConnectionPipeClient(textBoxClientName.Text, AddMessage);
+                else
+                    chatClient = new ChatConnectionSocketClient(textBoxClientName.Text, AddMessage);
                 ShowChatHistory();
                 ConnectedState();
             }

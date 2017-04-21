@@ -106,8 +106,6 @@ namespace ChatLibrary
             if (!Greet())
                 throw new Exception();
 
-
-
             serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             serverSocket.Connect(serverName, serverSocketPort);
             if (!serverSocket.Connected)
