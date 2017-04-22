@@ -20,6 +20,7 @@ namespace ChatLibrary.Models
         public Socket ClientSocket { get; set; }
         public Task ListenerTask { get; set; }
         public bool IsActive { get; set; }
+        public EventWaitHandle clientEventWaitHandle;
         public void Dispose()
         {
             IsActive = false;

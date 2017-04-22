@@ -11,5 +11,6 @@ namespace ChatLibrary.Models
     {
         public int ServerSocketPort { get; set; }
         public int ClientSocketPort { get; set; }
+        public string EventWaitHandleEventName { get; set; }
     }
 }

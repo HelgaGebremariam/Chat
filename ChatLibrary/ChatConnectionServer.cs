@@ -23,7 +23,6 @@ namespace ChatLibrary
         private event Action<ChatMessage> messageRecievedEvent;
 
         private int clientsCounter = 0;
-        private EventWaitHandle messageReceived;
         private Socket greetingSocket;
         private Socket clientSocket;
         private Socket serverSocket;
@@ -59,6 +58,14 @@ namespace ChatLibrary
             get
             {
                 return ConfigurationManager.AppSettings["greetingPipeName"];
+            }
+        }
+
+        private string eventWaitHandleName
+        {
+            get
+            {
+                return ConfigurationManager.AppSettings["eventWaitHandleName"];
             }
         }
 
@@ -147,13 +154,17 @@ namespace ChatLibrary
             greetingSocket.BeginAccept((IAsyncResult result)=> {
                 Socket handler = greetingSocket.EndAccept(result);
                 string clientId = clientUniqueIdPostfix;
+                string clientEventName = eventWaitHandleName + clientId;
+                var clientEvent = new EventWaitHandle(false, EventResetMode.AutoReset, clientEventName);
                 var greetingStream = new StreamObjectReader(new NetworkStream(handler));
                 var firstMessage = greetingStream.ReadMessage<ChatMessage>();
                 greetingStream.WriteMessage<string>(clientId);
+                
                 SocketSettings socketSettings = new SocketSettings()
                 {
                     ClientSocketPort = clientSocketPort,
-                    ServerSocketPort = serverSocketPort
+                    ServerSocketPort = serverSocketPort,
+                    EventWaitHandleEventName = clientEventName
                 };
                 
                 greetingStream.WriteMessage<SocketSettings>(socketSettings);
@@ -165,7 +176,8 @@ namespace ChatLibrary
                 {
                     ClientId = clientId,
                     ClientName = firstMessage.UserName,
-                    IsActive = true
+                    IsActive = true,
+                    clientEventWaitHandle = clientEvent
                 };
                 chatClients.Add(chatClient);
                 GreetNewSocketClient();
@@ -219,10 +231,8 @@ namespace ChatLibrary
 
         public void SendMessageToClients(ChatMessage message)
         {
-            
-
             serverSocket.Listen(maxClientsNumber);
-            messageReceived.Set();
+
             serverSocket.BeginAccept((IAsyncResult asyncResult) => {
                 Socket serverHandler = serverSocket.EndAccept(asyncResult);
                 var messageStream = new StreamObjectReader(new NetworkStream(serverHandler));
@@ -239,6 +249,17 @@ namespace ChatLibrary
                         var messageStream = new StreamObjectReader(client.ClientPipe);
                         messageStream.WriteMessage(message);
                     }
+                    else if(client.clientEventWaitHandle != null)
+                    {
+                        
+                        serverSocket.Listen(maxClientsNumber);
+                        client.clientEventWaitHandle.Set();
+                        serverSocket.BeginAccept((IAsyncResult asyncResult) => {
+                            Socket serverHandler = serverSocket.EndAccept(asyncResult);
+                            var messageStream = new StreamObjectReader(new NetworkStream(serverHandler));
+                            messageStream.WriteMessage(message);
+                        }, serverSocket);
+                    }
                     else
                     {
                         client.Dispose();
@@ -253,12 +274,10 @@ namespace ChatLibrary
             {
                 client.Dispose();
             }
-            messageReceived.Dispose();
         }
 
         public ChatConnectionServer(Action<ChatMessage> messageRecievedEvent)
         {
-            messageReceived = new EventWaitHandle(true, EventResetMode.ManualReset, "messageReceived");
             this.messageRecievedEvent += messageRecievedEvent;
             this.messageRecievedEvent += SendMessageToClients;
 

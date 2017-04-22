@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Configuration;
 using System.Threading;
+using System.Diagnostics;
 
 namespace ChatLibrary
 {
@@ -47,7 +48,6 @@ namespace ChatLibrary
 
         private bool Greet()
         {
-            
             using (Socket greetingSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
             {
                 foreach(var greetingPort in greetingSocketPorts)
@@ -85,8 +85,7 @@ namespace ChatLibrary
         {
             while (true)
             {
-                while (!messageReceived.WaitOne(0)) ;
-                messageReceived.Reset();
+                messageReceived.WaitOne();
                 var serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
                 if (!serverSocket.Connected)
@@ -94,19 +93,17 @@ namespace ChatLibrary
                 var chatMessageStreamServer = new StreamObjectReader(new NetworkStream(serverSocket));
                 var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
                 messageRecievedEvent(newMessage);
-                serverSocket.Disconnect(true);
-                messageReceived.Set();
             }
         }
 
         public ChatConnectionSocketClient(string clientName, Action<ChatMessage> messageRecievedEvent)
         {
-            messageReceived = EventWaitHandle.OpenExisting("messageReceived");
+            
             this.messageRecievedEvent += messageRecievedEvent;
             this.clientName = clientName;
             if (!Greet())
                 throw new Exception();
-
+            messageReceived = EventWaitHandle.OpenExisting(socketSettings.EventWaitHandleEventName);
             chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
         }
 
