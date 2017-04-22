@@ -28,6 +28,8 @@ namespace ChatLibrary.Models
                 ClientPipe.Dispose();
             if(ClientSocket != null)
                 ClientSocket.Dispose();
+            if (clientEventWaitHandle != null)
+                clientEventWaitHandle.Dispose();
         }
     }
 }
