@@ -15,16 +15,12 @@ namespace ChatLibrary
 {
     public class ChatConnectionSocketClient : IChatConnectionClient
     {
-        private Socket clientSocket;
-        private Socket serverSocket;
         private string clientName;
-        StreamObjectReader chatMessageStreamClient;
-        StreamObjectReader chatMessageStreamServer;
         private string clientId;
         private event Action<ChatMessage> messageRecievedEvent;
 
         private Task chatListenerTask;
-        private EventWaitHandle eventMessageReceived;
+        private EventWaitHandle messageReceived;
 
         public List<ChatMessage> ChatHistory { get; set; }
 
@@ -87,49 +83,45 @@ namespace ChatLibrary
 
         private void ChatListener()
         {
-            try
+            while (true)
             {
-                while (eventMessageReceived.WaitOne())
-                {
-                    serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
-                    if (!serverSocket.Connected)
-                        throw new Exception();
-                    chatMessageStreamServer = new StreamObjectReader(new NetworkStream(serverSocket));
-                    var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
-                    messageRecievedEvent(newMessage);
-                    serverSocket.Disconnect(true);
-                }
-            }
-            catch(IOException)
-            {
-
+                while (!messageReceived.WaitOne(0)) ;
+                messageReceived.Reset();
+                var serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
+                if (!serverSocket.Connected)
+                    throw new Exception();
+                var chatMessageStreamServer = new StreamObjectReader(new NetworkStream(serverSocket));
+                var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
+                messageRecievedEvent(newMessage);
+                serverSocket.Disconnect(true);
+                messageReceived.Set();
             }
         }
 
         public ChatConnectionSocketClient(string clientName, Action<ChatMessage> messageRecievedEvent)
         {
-            eventMessageReceived = new EventWaitHandle(false, EventResetMode.AutoReset, serverName + "eventMessageReceived");
+            messageReceived = EventWaitHandle.OpenExisting("messageReceived");
             this.messageRecievedEvent += messageRecievedEvent;
             this.clientName = clientName;
             if (!Greet())
                 throw new Exception();
-
-            serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
             chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
         }
 
         public void Dispose()
         {
+            messageReceived.Dispose();
         }
 
         public bool SendMessage(string message)
         {
-            clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            var clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
             if (!clientSocket.Connected)
                 throw new Exception();
-            chatMessageStreamClient = new StreamObjectReader(new NetworkStream(clientSocket));
+            var chatMessageStreamClient = new StreamObjectReader(new NetworkStream(clientSocket));
             chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
             clientSocket.Dispose();
             return true;

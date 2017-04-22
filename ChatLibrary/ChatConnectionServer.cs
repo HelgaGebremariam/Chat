@@ -23,7 +23,7 @@ namespace ChatLibrary
         private event Action<ChatMessage> messageRecievedEvent;
 
         private int clientsCounter = 0;
-        private EventWaitHandle eventMessageReceived;
+        private EventWaitHandle messageReceived;
         private Socket greetingSocket;
         private Socket clientSocket;
         private Socket serverSocket;
@@ -219,10 +219,10 @@ namespace ChatLibrary
 
         public void SendMessageToClients(ChatMessage message)
         {
-            eventMessageReceived.Set();
+            
 
             serverSocket.Listen(maxClientsNumber);
-
+            messageReceived.Set();
             serverSocket.BeginAccept((IAsyncResult asyncResult) => {
                 Socket serverHandler = serverSocket.EndAccept(asyncResult);
                 var messageStream = new StreamObjectReader(new NetworkStream(serverHandler));
@@ -253,11 +253,12 @@ namespace ChatLibrary
             {
                 client.Dispose();
             }
+            messageReceived.Dispose();
         }
 
         public ChatConnectionServer(Action<ChatMessage> messageRecievedEvent)
         {
-            eventMessageReceived = new EventWaitHandle(false, EventResetMode.AutoReset, "eventMessageReceived");
+            messageReceived = new EventWaitHandle(true, EventResetMode.ManualReset, "messageReceived");
             this.messageRecievedEvent += messageRecievedEvent;
             this.messageRecievedEvent += SendMessageToClients;
 

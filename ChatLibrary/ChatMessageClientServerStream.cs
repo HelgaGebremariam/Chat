@@ -50,7 +50,8 @@ namespace ChatLibrary
 			ChatMessage message = chatMessageExchanger.ReadMessage<ChatMessage>();
             if (message == null)
                 return null;
-			message.UserName = clientName;
+            if(clientName != string.Empty)
+			    message.UserName = clientName;
 			message.MessageSendDate = DateTime.Now;
 			return message;
 		}
