@@ -24,10 +24,12 @@ namespace Chat
     /// </summary>
     public partial class MainWindow : Window
     {
-        private IChatConnectionClient chatClient;
+        private IChatConnectionClient _chatClient;
         public MainWindow()
         {
             InitializeComponent();
+            InitialState();
+
         }
 
         private void InitialState()
@@ -35,6 +37,7 @@ namespace Chat
             buttonConnect.IsEnabled = true;
             textBoxClientName.IsEnabled = true;
             buttonSendMessage.IsEnabled = false;
+            textBoxNewMessage.IsEnabled = false;
             radioButtonPipe.IsEnabled = true;
             radioButtonSocket.IsEnabled = true;
         }
@@ -44,6 +47,7 @@ namespace Chat
             buttonConnect.IsEnabled = false;
             textBoxClientName.IsEnabled = false;
             buttonSendMessage.IsEnabled = true;
+            textBoxNewMessage.IsEnabled = true;
             labelServerError.Visibility = Visibility.Hidden;
             radioButtonPipe.IsEnabled = false;
             radioButtonSocket.IsEnabled = false;
@@ -51,7 +55,7 @@ namespace Chat
 
         private void buttonSendMessage_Click(object sender, RoutedEventArgs e)
         {
-            if(!chatClient.SendMessage(textBoxNewMessage.Text))
+            if(!_chatClient.SendMessage(textBoxNewMessage.Text))
             {
                 labelServerError.Visibility = Visibility.Visible;
                 InitialState();
@@ -68,10 +72,15 @@ namespace Chat
             
             try
             {
-                if(radioButtonPipe.IsChecked == true)
-                    chatClient = new ChatConnectionPipeClient(textBoxClientName.Text, AddMessage);
+                if (radioButtonPipe.IsChecked == true)
+                {
+                    _chatClient = new ChatConnectionPipeClient(AddMessage);
+                }
                 else
-                    chatClient = new ChatConnectionSocketClient(textBoxClientName.Text, AddMessage);
+                {
+                    _chatClient = new ChatConnectionSocketClient(AddMessage);
+                }
+                _chatClient.Connect(textBoxClientName.Text);
                 ShowChatHistory();
                 ConnectedState();
             }
@@ -83,9 +92,9 @@ namespace Chat
 
         private void ShowChatHistory()
         {
-            for(int i = 0; i < chatClient.ChatHistory.Count(); i++)
+            for(var i = 0; i < _chatClient.ChatHistory.Count(); i++)
             {
-                textBoxChatMessages.Text += chatClient.ChatHistory[i].ToString();
+                textBoxChatMessages.Text += _chatClient.ChatHistory[i].ToString();
             }
         }
 
@@ -106,9 +115,34 @@ namespace Chat
 
         public void window_Closed(object sender, EventArgs e)
         {
-            if(chatClient != null)
-                chatClient.Dispose();
+            _chatClient?.Dispose();
         }
 
+        private void ResizeControl(FrameworkElement control, double xChange, double yChange)
+        {
+            control.Height = control.ActualHeight * yChange;
+            control.Width = control.ActualWidth * xChange;
+
+            Canvas.SetTop(control, Canvas.GetTop(control) * yChange);
+            Canvas.SetLeft(control, Canvas.GetLeft(control) * xChange);
+        }
+        
+        private void MainWindow_OnSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            this.Width = e.NewSize.Width;
+            this.Height = e.NewSize.Height;
+
+            double xChange = 1, yChange = 1;
+            if (e.PreviousSize.Width != 0)
+                xChange = (e.NewSize.Width / e.PreviousSize.Width);
+
+            if (e.PreviousSize.Height != 0)
+                yChange = (e.NewSize.Height / e.PreviousSize.Height);
+
+            ResizeControl(textBoxClientName, xChange, yChange);
+            ResizeControl(textBoxNewMessage, xChange, yChange);
+            ResizeControl(scrollViewerChatMessages, xChange, yChange);
+
+        }
     }
 }

@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChatClients.cs" />
     <Compile Include="ChatHistory.cs" />
     <Compile Include="ChatPipeServer.cs" />
     <Compile Include="ChatConnectionSocketClient.cs" />

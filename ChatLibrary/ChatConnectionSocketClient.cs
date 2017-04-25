@@ -17,31 +17,31 @@ namespace ChatLibrary
 {
     public class ChatConnectionSocketClient : IChatConnectionClient
     {
-        private string clientName;
-        private string clientId;
-        private event Action<ChatMessage> messageRecievedEvent;
+        private string _clientName;
+        private event Action<ChatMessage> MessageRecievedEvent;
 
-        private Task chatListenerTask;
-        private EventWaitHandle messageReceived;
+        private EventWaitHandle _messageReceived;
+        private Task _chatListenerTask;
+        private volatile bool _isTimeToFinish = false;
 
         public List<ChatMessage> ChatHistory { get; set; }
 
 
-        private SocketSettings socketSettings;
+        private SocketSettings _socketSettings;
 
-        private string serverName => ConfigurationManager.AppSettings["serverName"];
+        private static string ServerName => ConfigurationManager.AppSettings["serverName"];
 
-        private List<int> greetingSocketPorts => ConfigurationManager.AppSettings["greetingSocketPorts"].Split(',').Select(s=>Convert.ToInt32(s)).ToList();
+        private static IEnumerable<int> GreetingSocketPorts => ConfigurationManager.AppSettings["greetingSocketPorts"].Split(',').Select(s=>Convert.ToInt32(s)).ToList();
 
-        private bool Greet()
+        private bool ExchangeInitializationInformationWithServer()
         {
             try
             {
-                using (Socket greetingSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
+                using (var greetingSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
                 {
-                    foreach (var greetingPort in greetingSocketPorts)
+                    foreach (var greetingPort in GreetingSocketPorts)
                     {
-                        greetingSocket.Connect(serverName, greetingPort);
+                        greetingSocket.Connect(ServerName, greetingPort);
                         if (greetingSocket.Connected)
                             break;
                     }
@@ -49,13 +49,13 @@ namespace ChatLibrary
                     if (!greetingSocket.Connected)
                         return false;
 
-                    ChatMessage firstMessage = new ChatMessage() { UserName = clientName };
+                    var firstMessage = new ChatMessage() { UserName = _clientName };
                     using (var greetingSocketStream = new NetworkStream(greetingSocket))
                     {
-                        StreamObjectReader greetingStream = new StreamObjectReader(greetingSocketStream);
+                        var greetingStream = new StreamObjectReader(greetingSocketStream);
                         greetingStream.WriteMessage(firstMessage);
-                        clientId = greetingStream.ReadMessage<string>();
-                        socketSettings = greetingStream.ReadMessage<SocketSettings>();
+                        greetingStream.ReadMessage<string>();
+                        _socketSettings = greetingStream.ReadMessage<SocketSettings>();
                         ChatHistory = new List<ChatMessage>();
                         while (true)
                         {
@@ -78,33 +78,30 @@ namespace ChatLibrary
 
         private void ChatListener()
         {
-            while (true)
+            while(!_isTimeToFinish)
             {
-                messageReceived.WaitOne();
+                if (!_messageReceived.WaitOne(100)) continue;
                 var serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
+                serverSocket.Connect(ServerName, _socketSettings.ServerSocketPort);
                 if (!serverSocket.Connected)
                     throw new ServerException();
                 var chatMessageStreamServer = new StreamObjectReader(new NetworkStream(serverSocket));
                 var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
-                messageRecievedEvent(newMessage);
+                MessageRecievedEvent?.Invoke(newMessage);
             }
         }
 
-        public ChatConnectionSocketClient(string clientName, Action<ChatMessage> messageRecievedEvent)
+        public ChatConnectionSocketClient(Action<ChatMessage> messageRecievedEvent)
         {
-            
-            this.messageRecievedEvent += messageRecievedEvent;
-            this.clientName = clientName;
-            if (!Greet())
-                throw new ServerException();
-            messageReceived = EventWaitHandle.OpenExisting(socketSettings.EventWaitHandleEventName);
-            chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
+            this.MessageRecievedEvent += messageRecievedEvent;
         }
 
         public void Dispose()
         {
-            messageReceived.Dispose();
+            _messageReceived.Dispose();
+            _isTimeToFinish = true;
+            _chatListenerTask.Wait();
+            _chatListenerTask.Dispose();
         }
 
         public bool SendMessage(string message)
@@ -112,11 +109,11 @@ namespace ChatLibrary
             try
             {
                 var clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
+                clientSocket.Connect(ServerName, _socketSettings.ClientSocketPort);
                 if (!clientSocket.Connected)
                     return false;
                 var chatMessageStreamClient = new StreamObjectReader(new NetworkStream(clientSocket));
-                chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
+                chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = _clientName, Message = message, MessageSendDate = DateTime.Now });
                 clientSocket.Dispose();
                 return true;
             }
@@ -127,9 +124,14 @@ namespace ChatLibrary
 
         }
 
-        public bool Connect()
+        public bool Connect(string clientName)
         {
-            throw new NotImplementedException();
+            this._clientName = clientName;
+            if (!ExchangeInitializationInformationWithServer())
+                return false;
+            _messageReceived = EventWaitHandle.OpenExisting(_socketSettings.EventWaitHandleEventName);
+            _chatListenerTask = Task.Factory.StartNew(ChatListener);
+            return true;
         }
     }
 }

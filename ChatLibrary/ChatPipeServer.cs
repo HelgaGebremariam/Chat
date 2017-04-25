@@ -16,7 +16,7 @@ namespace ChatLibrary
     public class ChatPipeServer : IChatServer
     {
         public ConcurrentBag<ChatClient> ChatClients { get; set; }
-        private ConcurrentBag<Task> serverTasks;
+        private readonly ConcurrentBag<Task> _serverTasks;
         private int _clientsCounter = 0;
 
         public event Action<ChatMessage> MessageRecievedEvent;
@@ -31,11 +31,11 @@ namespace ChatLibrary
             }
         }
         
-        private int MaxClientsNumber => Convert.ToInt32(ConfigurationManager.AppSettings["maxClientsNumber"]);
-        private string ServerPipeName => ConfigurationManager.AppSettings["serverPipeName"];
-        private string GreetingPipeName => ConfigurationManager.AppSettings["greetingPipeName"];
+        private static int MaxClientsNumber => Convert.ToInt32(ConfigurationManager.AppSettings["maxClientsNumber"]);
+        private static string ServerPipeName => ConfigurationManager.AppSettings["serverPipeName"];
+        private static string GreetingPipeName => ConfigurationManager.AppSettings["greetingPipeName"];
 
-        private void SendChatHistory(StreamObjectReader chatMessageStream)
+        private static void SendChatHistory(StreamObjectReader chatMessageStream)
         {
             foreach (var message in ChatHistory.Instance.ChatMessages)
             {
@@ -45,7 +45,7 @@ namespace ChatLibrary
             chatMessageStream.WriteMessage(defaultMessage);
         }
 
-        private ChatMessage GetNewUserJoinedMessage(string username)
+        private static ChatMessage GetNewUserJoinedMessage(string username)
         {
             return new ChatMessage() { UserName = username, Message = "Joined", MessageSendDate = DateTime.Now };
         }
@@ -54,18 +54,16 @@ namespace ChatLibrary
         {
             foreach (var client in ChatClients)
             {
-                if (client.IsActive)
-                {
-                    if (client.ClientPipe != null && client.ClientPipe.IsConnected)
+                if (!client.IsActive) continue;
+                if (client.ClientPipe != null && client.ClientPipe.IsConnected)
 
-                    {
-                        var messageStream = new StreamObjectReader(client.ClientPipe);
-                        messageStream.WriteMessage(message);
-                    }
-                    else
-                    {
-                        client.Dispose();
-                    }
+                {
+                    var messageStream = new StreamObjectReader(client.ClientPipe);
+                    messageStream.WriteMessage(message);
+                }
+                else
+                {
+                    client.Dispose();
                 }
             }
         }
@@ -73,8 +71,7 @@ namespace ChatLibrary
         public ChatPipeServer()
         {
             ChatClients = new ConcurrentBag<ChatClient>();
-            serverTasks = new ConcurrentBag<Task>();
-            this.MessageRecievedEvent += SendMessageToClients;
+            _serverTasks = new ConcurrentBag<Task>();
         }
 
         private void ChatListener(ChatClient chatClient)
@@ -147,7 +144,7 @@ namespace ChatLibrary
 
         public void Start()
         {
-            serverTasks.Add(Task.Factory.StartNew(ListenNewClient));
+            _serverTasks.Add(Task.Factory.StartNew(ListenNewClient));
         }
 
 
@@ -157,7 +154,7 @@ namespace ChatLibrary
             {
                 client.Dispose();
             }
-            foreach (var task in serverTasks)
+            foreach (var task in _serverTasks)
             {
                 task.Dispose();
             }

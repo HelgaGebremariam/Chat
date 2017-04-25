@@ -8,18 +8,18 @@ using ChatLibrary.Models;
 
 namespace ChatLibrary
 {
-    public class ChatHistory
+    public class ChatClients
     {
-        private static ChatHistory _instance = null;
+        private static ChatClients _instance = null;
         private static readonly object Padlock = new object();
-        public ConcurrentBag<ChatMessage> ChatMessages = new ConcurrentBag<ChatMessage>();
-        public static ChatHistory Instance
+        public ConcurrentBag<ChatClient> ChatClientsBag = new ConcurrentBag<ChatClient>();
+        public static ChatClients Instance
         {
             get
             {
                 lock (Padlock)
                 {
-                    return _instance ?? (_instance = new ChatHistory());
+                    return _instance ?? (_instance = new ChatClients());
                 }
             }
         }

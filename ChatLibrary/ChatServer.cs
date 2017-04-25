@@ -19,31 +19,41 @@ namespace ChatLibrary
     public class ChatServer : IDisposable
     {
 
-        private ConcurrentBag<IChatServer> chatServers;
+        private readonly ConcurrentBag<IChatServer> _chatServers;
 
         public void Dispose()
         {
-            if (chatServers != null)
+            if (_chatServers != null)
             {
-                foreach (var server in chatServers)
+                foreach (var server in _chatServers)
                 {
                     server.Dispose();
                 }
             }
         }
 
+        public void SendMessageToClients(ChatMessage message)
+        {
+            foreach (var server in _chatServers)
+            {
+                server.SendMessageToClients(message);
+            }
+        }
+
         public ChatServer(Action<ChatMessage> messageRecievedEvent)
         {
-            chatServers = new ConcurrentBag<IChatServer>();
+            _chatServers = new ConcurrentBag<IChatServer>();
 
             var chatPipeServer = new ChatPipeServer();
             chatPipeServer.MessageRecievedEvent += messageRecievedEvent;
-            
-            chatServers.Add(chatPipeServer);
+            chatPipeServer.MessageRecievedEvent += SendMessageToClients;
+
+            _chatServers.Add(chatPipeServer);
 
             var chatSocketServer = new ChatSocketServer();
             chatSocketServer.MessageRecievedEvent += messageRecievedEvent;
-            chatServers.Add(chatSocketServer);
+            chatSocketServer.MessageRecievedEvent += SendMessageToClients;
+            _chatServers.Add(chatSocketServer);
 
             ChatHistory.Instance.ChatMessages.Add(new ChatMessage()
             {

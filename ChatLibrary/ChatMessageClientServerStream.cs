@@ -14,45 +14,45 @@ namespace ChatLibrary
 {
 	public class ChatMessageClientServerStream : IDisposable
 	{
-		private StreamObjectReader chatMessageExchanger;
-		private string clientName;
-        private string clientId;
-		Stream clientStream;
+		private readonly StreamObjectReader _chatMessageExchanger;
+		private readonly string _clientName;
+        private readonly string _clientId;
+	    private readonly Stream _clientStream;
 
-		private string clientPipeName => ConfigurationManager.AppSettings["clientPipeName"] + clientId;
+		private string ClientPipeName => ConfigurationManager.AppSettings["clientPipeName"] + _clientId;
 
 		public ChatMessageClientServerStream(string clientName, string clientId)
 		{
-			this.clientName = clientName;
-            this.clientId = clientId;
-            var stream = new NamedPipeServerStream(clientPipeName, PipeDirection.In, 1);
+			this._clientName = clientName;
+            this._clientId = clientId;
+            var stream = new NamedPipeServerStream(ClientPipeName, PipeDirection.In, 1);
             stream.WaitForConnection();
-            clientStream = stream;
-            chatMessageExchanger = new StreamObjectReader(clientStream);
+            _clientStream = stream;
+            _chatMessageExchanger = new StreamObjectReader(_clientStream);
 		}
 
         public ChatMessageClientServerStream(Stream stream, string clientId, string clientName)
         {
-            this.clientName = clientName;
-            this.clientId = clientId;
-            clientStream = stream;
-            chatMessageExchanger = new StreamObjectReader(clientStream);
+            this._clientName = clientName;
+            this._clientId = clientId;
+            _clientStream = stream;
+            _chatMessageExchanger = new StreamObjectReader(_clientStream);
         }
 
         public ChatMessage GetNextMessage()
 		{
-			ChatMessage message = chatMessageExchanger.ReadMessage<ChatMessage>();
+			var message = _chatMessageExchanger.ReadMessage<ChatMessage>();
             if (message == null)
                 return null;
-            if(clientName != string.Empty)
-			    message.UserName = clientName;
+            if(_clientName != string.Empty)
+			    message.UserName = _clientName;
 			message.MessageSendDate = DateTime.Now;
 			return message;
 		}
 
         public void Dispose()
         {
-            clientStream.Dispose();
+            _clientStream.Dispose();
         }
     }
 }

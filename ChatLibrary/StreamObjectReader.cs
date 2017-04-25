@@ -12,14 +12,14 @@ namespace ChatLibrary
 {
     public class StreamObjectReader
     {
-        private Stream ioStream;
+        private readonly Stream _ioStream;
 
         public StreamObjectReader(Stream ioStream)
         {
-            this.ioStream = ioStream;
+            this._ioStream = ioStream;
         }
 
-        private byte[] ObjectToByteArray(Object obj)
+        private static byte[] ObjectToByteArray(Object obj)
         {
             BinaryFormatter bf = new BinaryFormatter();
             using (var ms = new MemoryStream())
@@ -29,7 +29,7 @@ namespace ChatLibrary
             }
         }
 
-        private Object ByteArrayToObject(byte[] arrBytes)
+        private static object ByteArrayToObject(byte[] arrBytes)
         {
             using (var memStream = new MemoryStream())
             {
@@ -43,17 +43,17 @@ namespace ChatLibrary
 
         public T ReadMessage<T>() where T : class
         {
-            if (ioStream.CanRead == false)
+            if (_ioStream.CanRead == false)
                 return null;
-            int len = 0;
-            len = ioStream.ReadByte() * 256;
+            var len = 0;
+            len = _ioStream.ReadByte() * 256;
             if (len < 0)
                 return null;
-            len += ioStream.ReadByte();
+            len += _ioStream.ReadByte();
             if (len <= 0)
                 return null;
             byte[] inBuffer = new byte[len];
-            ioStream.Read(inBuffer, 0, len);
+            _ioStream.Read(inBuffer, 0, len);
 
             return ByteArrayToObject(inBuffer) as T;
         }
@@ -62,16 +62,16 @@ namespace ChatLibrary
         {
             if (outputMessage == null)
                 return 0;
-            byte[] outBuffer = ObjectToByteArray(outputMessage);
-            int len = outBuffer.Length;
-            if (len > UInt16.MaxValue)
+            var outBuffer = ObjectToByteArray(outputMessage);
+            var len = outBuffer.Length;
+            if (len > ushort.MaxValue)
             {
-                len = (int)UInt16.MaxValue;
+                len = (int)ushort.MaxValue;
             }
-            ioStream.WriteByte((byte)(len / 256));
-            ioStream.WriteByte((byte)(len & 255));
-            ioStream.Write(outBuffer, 0, len);
-            ioStream.Flush();
+            _ioStream.WriteByte((byte)(len / 256));
+            _ioStream.WriteByte((byte)(len & 255));
+            _ioStream.Write(outBuffer, 0, len);
+            _ioStream.Flush();
 
             return outBuffer.Length + 2;
         }

@@ -9,7 +9,7 @@ namespace ChatLibrary.Interfaces
 {
     public interface IChatConnectionClient : IDisposable
     {
-        bool Connect();
+        bool Connect(string clientName);
         bool SendMessage(string message);
         List<ChatMessage> ChatHistory { get; set; }
     }

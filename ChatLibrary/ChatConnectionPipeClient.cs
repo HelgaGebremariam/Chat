@@ -16,39 +16,39 @@ namespace ChatLibrary
     public class ChatConnectionPipeClient : IChatConnectionClient
     {
 		public List<ChatMessage> ChatHistory { get; set; }
-        private StreamObjectReader chatMessageStreamClient;
-        private StreamObjectReader chatMessageStreamServer;
-        private string clientName;
-        NamedPipeClientStream pipeClient;
-        NamedPipeClientStream pipeServer;
-		private event Action<ChatMessage> messageRecievedEvent;
-        private Task chatListenerTask;
-        private int connectionTimeout = 1000;
-        private string clientId { get; set; }
+        private StreamObjectReader _chatMessageStreamClient;
+        private StreamObjectReader _chatMessageStreamServer;
+        private string _clientName;
+        private NamedPipeClientStream _pipeClient;
+        private NamedPipeClientStream _pipeServer;
+		private event Action<ChatMessage> MessageRecievedEvent;
+        private Task _chatListenerTask;
+        private const int ConnectionTimeout = 1000;
+        private string ClientId { get; set; }
 
-        private string clientPipeName => ConfigurationManager.AppSettings["clientPipeName"] + clientId;
+        private string ClientPipeName => ConfigurationManager.AppSettings["clientPipeName"] + ClientId;
 
-        private string greetingPipeName => ConfigurationManager.AppSettings["greetingPipeName"];
+        private static string GreetingPipeName => ConfigurationManager.AppSettings["greetingPipeName"];
 
-		private string serverPipeName => ConfigurationManager.AppSettings["serverPipeName"] + clientId;
+		private string ServerPipeName => ConfigurationManager.AppSettings["serverPipeName"] + ClientId;
 
-        private string serverName => ConfigurationManager.AppSettings["serverName"];
+        private static string ServerName => ConfigurationManager.AppSettings["serverName"];
 
 		private void ChatListener()
 		{
-			while (pipeServer.IsConnected)
+			while (_pipeServer.IsConnected)
 			{
-				var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
-				messageRecievedEvent(newMessage);
+			    var newMessage = _chatMessageStreamServer.ReadMessage<ChatMessage>();
+			    MessageRecievedEvent?.Invoke(newMessage);
 			}
 		}
 
-		private bool Greet()
+		private bool ExchangeInitializationInformationWithServer()
 		{
-			NamedPipeClientStream greetingPipe = new NamedPipeClientStream(serverName, greetingPipeName, PipeDirection.InOut);
+			var greetingPipe = new NamedPipeClientStream(ServerName, GreetingPipeName, PipeDirection.InOut);
             try
             {
-                greetingPipe.Connect(connectionTimeout);
+                greetingPipe.Connect(ConnectionTimeout);
             }
             catch(TimeoutException)
             {
@@ -56,12 +56,12 @@ namespace ChatLibrary
             }
             if (!greetingPipe.IsConnected)
                 return false;
-			ChatMessage firstMessage = new ChatMessage() { UserName = clientName };
+			var firstMessage = new ChatMessage() { UserName = _clientName };
 
-			StreamObjectReader greetingStream = new StreamObjectReader(greetingPipe);
+			var greetingStream = new StreamObjectReader(greetingPipe);
 			greetingStream.WriteMessage(firstMessage);
 			greetingPipe.WaitForPipeDrain();
-            clientId = greetingStream.ReadMessage<string>();
+            ClientId = greetingStream.ReadMessage<string>();
 			ChatHistory = new List<ChatMessage>();
             while (true)
             {
@@ -74,49 +74,54 @@ namespace ChatLibrary
             return true;
 		}
 
-		public ChatConnectionPipeClient(string clientName, Action<ChatMessage> messageRecievedEvent)
+		public ChatConnectionPipeClient(Action<ChatMessage> messageRecievedEvent)
 		{
-			this.messageRecievedEvent += messageRecievedEvent;
-			this.clientName = clientName;
-            if (!Greet())
-                throw new ServerException();
-            pipeServer = new NamedPipeClientStream(serverName, serverPipeName, PipeDirection.In);
-            pipeServer.Connect(connectionTimeout);
-            if (!pipeServer.IsConnected)
-                throw new ServerException();
-            chatMessageStreamServer = new StreamObjectReader(pipeServer);
-
-            pipeClient = new NamedPipeClientStream(serverName, clientPipeName, PipeDirection.Out);
-            pipeClient.Connect(connectionTimeout);
-            if (!pipeClient.IsConnected)
-                throw new ServerException();
-            chatMessageStreamClient = new StreamObjectReader(pipeClient);
-
-            chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
+			this.MessageRecievedEvent += messageRecievedEvent;
 		}
 
         public bool SendMessage(string message)
         {
-            if (pipeServer.IsConnected)
-            {
-                chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
-                return true;
-            }
-            return false;
+            if (!_pipeServer.IsConnected) return false;
+            _chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = _clientName, Message = message, MessageSendDate = DateTime.Now });
+            return true;
         }
 
         public void Dispose()
         {
-            pipeClient.Close();
-            pipeServer.Close();
-            pipeClient.Dispose();
-            pipeServer.Dispose();
-            chatListenerTask.Wait();
+            _pipeClient.Close();
+            _pipeServer.Close();
+            _pipeClient.Dispose();
+            _pipeServer.Dispose();
+            _chatListenerTask.Wait();
+            _chatListenerTask.Dispose();
         }
 
-        public bool Connect()
+        public bool Connect(string clientName)
         {
-            throw new NotImplementedException();
+            this._clientName = clientName;
+
+            if (!ExchangeInitializationInformationWithServer())
+                return false;
+
+            _pipeServer = new NamedPipeClientStream(ServerName, ServerPipeName, PipeDirection.In);
+            _pipeServer.Connect(ConnectionTimeout);
+
+            if (!_pipeServer.IsConnected)
+                return false;
+
+            _chatMessageStreamServer = new StreamObjectReader(_pipeServer);
+
+            _pipeClient = new NamedPipeClientStream(ServerName, ClientPipeName, PipeDirection.Out);
+            _pipeClient.Connect(ConnectionTimeout);
+
+            if (!_pipeClient.IsConnected)
+                return false;
+
+            _chatMessageStreamClient = new StreamObjectReader(_pipeClient);
+
+            _chatListenerTask = Task.Factory.StartNew(ChatListener);
+
+            return true;
         }
     }
 }
