@@ -19,13 +19,7 @@ namespace ChatLibrary
         private string clientId;
 		Stream clientStream;
 
-		private string clientPipeName
-		{
-			get
-			{
-				return ConfigurationManager.AppSettings["clientPipeName"] + clientId;
-			}
-		}
+		private string clientPipeName => ConfigurationManager.AppSettings["clientPipeName"] + clientId;
 
 		public ChatMessageClientServerStream(string clientName, string clientId)
 		{

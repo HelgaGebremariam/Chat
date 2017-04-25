@@ -23,19 +23,19 @@ namespace ChatServer
     /// </summary>
     public partial class MainWindow : Window
     {
-        ChatConnectionServer chatConnectionServer;
+        ChatLibrary.ChatServer chatConnectionServer;
         public MainWindow()
         {
             InitializeComponent();
-			chatConnectionServer = new ChatConnectionServer(AddMessage);
+			chatConnectionServer = new ChatLibrary.ChatServer(AddMessage);
             ShowChatHistory();
         }
 
         public void ShowChatHistory()
         {
-            for(int i = 0; i < chatConnectionServer.ChatHistory.Count(); i++)
+            for(int i = 0; i < ChatHistory.Instance.ChatMessages.Count(); i++)
             {
-				AddMessage(chatConnectionServer.ChatHistory.ElementAt(i));
+				AddMessage(ChatHistory.Instance.ChatMessages.ElementAt(i));
             }
         }
 

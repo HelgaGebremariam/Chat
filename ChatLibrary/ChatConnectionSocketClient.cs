@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Configuration;
 using System.Threading;
 using System.Diagnostics;
+using System.Runtime.Remoting;
 
 namespace ChatLibrary
 {
@@ -28,57 +29,51 @@ namespace ChatLibrary
 
         private SocketSettings socketSettings;
 
-        private string serverName
-        {
-            get
-            {
-                return ConfigurationManager.AppSettings["serverName"];
-            }
-        }
+        private string serverName => ConfigurationManager.AppSettings["serverName"];
 
-        
-
-        private List<int> greetingSocketPorts
-        {
-            get
-            {
-                return ConfigurationManager.AppSettings["greetingSocketPorts"].Split(',').Select(s=>Convert.ToInt32(s)).ToList();
-            }
-        }
+        private List<int> greetingSocketPorts => ConfigurationManager.AppSettings["greetingSocketPorts"].Split(',').Select(s=>Convert.ToInt32(s)).ToList();
 
         private bool Greet()
         {
-            using (Socket greetingSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
+            try
             {
-                foreach(var greetingPort in greetingSocketPorts)
+                using (Socket greetingSocket = new Socket(SocketType.Stream, ProtocolType.Tcp))
                 {
-                    greetingSocket.Connect(serverName, greetingPort);
-                    if (greetingSocket.Connected)
-                        break;
-                }
-
-                if (!greetingSocket.Connected)
-                    return false;
-
-                ChatMessage firstMessage = new ChatMessage() { UserName = clientName };
-                using (var greetingSocketStream = new NetworkStream(greetingSocket))
-                {
-                    StreamObjectReader greetingStream = new StreamObjectReader(greetingSocketStream);
-                    greetingStream.WriteMessage(firstMessage);
-                    clientId = greetingStream.ReadMessage<string>();
-                    socketSettings = greetingStream.ReadMessage<SocketSettings>();
-                    ChatHistory = new List<ChatMessage>();
-                    while (ChatHistory.Count() < 100)
+                    foreach (var greetingPort in greetingSocketPorts)
                     {
-                        var message = greetingStream.ReadMessage<ChatMessage>();
-                        if (message.MessageSendDate == DateTime.MinValue)
+                        greetingSocket.Connect(serverName, greetingPort);
+                        if (greetingSocket.Connected)
                             break;
-                        ChatHistory.Add(message);
                     }
-                    greetingSocket.Close();
+
+                    if (!greetingSocket.Connected)
+                        return false;
+
+                    ChatMessage firstMessage = new ChatMessage() { UserName = clientName };
+                    using (var greetingSocketStream = new NetworkStream(greetingSocket))
+                    {
+                        StreamObjectReader greetingStream = new StreamObjectReader(greetingSocketStream);
+                        greetingStream.WriteMessage(firstMessage);
+                        clientId = greetingStream.ReadMessage<string>();
+                        socketSettings = greetingStream.ReadMessage<SocketSettings>();
+                        ChatHistory = new List<ChatMessage>();
+                        while (true)
+                        {
+                            var message = greetingStream.ReadMessage<ChatMessage>();
+                            if (message.MessageSendDate == DateTime.MinValue)
+                                break;
+                            ChatHistory.Add(message);
+                        }
+                        greetingSocket.Close();
+                    }
                 }
+                return true;
             }
-            return true;
+            catch(SocketException)
+            {
+                return false;
+            }
+            
         }
 
         private void ChatListener()
@@ -89,7 +84,7 @@ namespace ChatLibrary
                 var serverSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 serverSocket.Connect(serverName, socketSettings.ServerSocketPort);
                 if (!serverSocket.Connected)
-                    throw new Exception();
+                    throw new ServerException();
                 var chatMessageStreamServer = new StreamObjectReader(new NetworkStream(serverSocket));
                 var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
                 messageRecievedEvent(newMessage);
@@ -102,7 +97,7 @@ namespace ChatLibrary
             this.messageRecievedEvent += messageRecievedEvent;
             this.clientName = clientName;
             if (!Greet())
-                throw new Exception();
+                throw new ServerException();
             messageReceived = EventWaitHandle.OpenExisting(socketSettings.EventWaitHandleEventName);
             chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
         }
@@ -114,15 +109,27 @@ namespace ChatLibrary
 
         public bool SendMessage(string message)
         {
-            var clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
-            if (!clientSocket.Connected)
-                throw new Exception();
-            var chatMessageStreamClient = new StreamObjectReader(new NetworkStream(clientSocket));
-            chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
-            clientSocket.Dispose();
-            return true;
+            try
+            {
+                var clientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                clientSocket.Connect(serverName, socketSettings.ClientSocketPort);
+                if (!clientSocket.Connected)
+                    return false;
+                var chatMessageStreamClient = new StreamObjectReader(new NetworkStream(clientSocket));
+                chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
+                clientSocket.Dispose();
+                return true;
+            }
+            catch(SocketException)
+            {
+                return false;
+            }
 
+        }
+
+        public bool Connect()
+        {
+            throw new NotImplementedException();
         }
     }
 }

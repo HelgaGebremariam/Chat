@@ -41,11 +41,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChatHistory.cs" />
+    <Compile Include="ChatPipeServer.cs" />
     <Compile Include="ChatConnectionSocketClient.cs" />
+    <Compile Include="ChatSocketServer.cs" />
     <Compile Include="Interfaces\IChatConnectionClient.cs" />
+    <Compile Include="Interfaces\IChatServer.cs" />
     <Compile Include="Models\ChatClient.cs" />
     <Compile Include="ChatConnectionPipeClient.cs" />
-    <Compile Include="ChatConnectionServer.cs" />
+    <Compile Include="ChatServer.cs" />
     <Compile Include="Models\ChatMessage.cs" />
     <Compile Include="Models\SocketSettings.cs" />
     <Compile Include="StreamObjectReader.cs" />

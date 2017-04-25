@@ -15,6 +15,7 @@ using System.Windows.Shapes;
 using ChatLibrary;
 using ChatLibrary.Models;
 using ChatLibrary.Interfaces;
+using System.Runtime.Remoting;
 
 namespace Chat
 {
@@ -74,11 +75,10 @@ namespace Chat
                 ShowChatHistory();
                 ConnectedState();
             }
-            catch(Exception ex)
+            catch(ServerException)
             {
                 labelServerError.Visibility = Visibility.Visible;
             }
-
         }
 
         private void ShowChatHistory()

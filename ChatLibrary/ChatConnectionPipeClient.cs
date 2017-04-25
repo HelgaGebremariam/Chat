@@ -9,6 +9,7 @@ using System.Threading;
 using System.Configuration;
 using ChatLibrary.Models;
 using ChatLibrary.Interfaces;
+using System.Runtime.Remoting;
 
 namespace ChatLibrary
 {
@@ -25,37 +26,13 @@ namespace ChatLibrary
         private int connectionTimeout = 1000;
         private string clientId { get; set; }
 
-        private string clientPipeName
-        {
-            get
-            {
-                return ConfigurationManager.AppSettings["clientPipeName"] + clientId;
-            }
-        }
+        private string clientPipeName => ConfigurationManager.AppSettings["clientPipeName"] + clientId;
 
-        private string greetingPipeName
-		{
-			get
-			{
-				return ConfigurationManager.AppSettings["greetingPipeName"];
-			}
-		}
+        private string greetingPipeName => ConfigurationManager.AppSettings["greetingPipeName"];
 
-		private string serverPipeName
-        {
-            get
-            {
-                return ConfigurationManager.AppSettings["serverPipeName"] + clientId;
-            }
-        }
+		private string serverPipeName => ConfigurationManager.AppSettings["serverPipeName"] + clientId;
 
-        private string serverName
-		{
-			get
-			{
-				return ConfigurationManager.AppSettings["serverName"];
-			}
-		}
+        private string serverName => ConfigurationManager.AppSettings["serverName"];
 
 		private void ChatListener()
 		{
@@ -69,7 +46,14 @@ namespace ChatLibrary
 		private bool Greet()
 		{
 			NamedPipeClientStream greetingPipe = new NamedPipeClientStream(serverName, greetingPipeName, PipeDirection.InOut);
-            greetingPipe.Connect(connectionTimeout);
+            try
+            {
+                greetingPipe.Connect(connectionTimeout);
+            }
+            catch(TimeoutException)
+            {
+                return false;
+            }
             if (!greetingPipe.IsConnected)
                 return false;
 			ChatMessage firstMessage = new ChatMessage() { UserName = clientName };
@@ -79,7 +63,7 @@ namespace ChatLibrary
 			greetingPipe.WaitForPipeDrain();
             clientId = greetingStream.ReadMessage<string>();
 			ChatHistory = new List<ChatMessage>();
-            while (ChatHistory.Count() < 100)
+            while (true)
             {
                 var message = greetingStream.ReadMessage<ChatMessage>();
                 if (message.MessageSendDate == DateTime.MinValue)
@@ -94,18 +78,18 @@ namespace ChatLibrary
 		{
 			this.messageRecievedEvent += messageRecievedEvent;
 			this.clientName = clientName;
-			if(!Greet())
-                throw new Exception();
+            if (!Greet())
+                throw new ServerException();
             pipeServer = new NamedPipeClientStream(serverName, serverPipeName, PipeDirection.In);
             pipeServer.Connect(connectionTimeout);
             if (!pipeServer.IsConnected)
-                throw new Exception();
+                throw new ServerException();
             chatMessageStreamServer = new StreamObjectReader(pipeServer);
 
             pipeClient = new NamedPipeClientStream(serverName, clientPipeName, PipeDirection.Out);
             pipeClient.Connect(connectionTimeout);
             if (!pipeClient.IsConnected)
-                throw new Exception();
+                throw new ServerException();
             chatMessageStreamClient = new StreamObjectReader(pipeClient);
 
             chatListenerTask = Task.Factory.StartNew(() => { ChatListener(); });
@@ -131,6 +115,11 @@ namespace ChatLibrary
             pipeClient.Dispose();
             pipeServer.Dispose();
             chatListenerTask.Wait();
+        }
+
+        public bool Connect()
+        {
+            throw new NotImplementedException();
         }
     }
 }
