@@ -18,23 +18,32 @@ namespace ChatLibrary
 {
     public class ChatServer : IDisposable
     {
-        private ConcurrentBag<Task> serverTasks;
 
-        private IChatServer chatPipeServer;
+        private ConcurrentBag<IChatServer> chatServers;
 
         public void Dispose()
         {
-            foreach(var task in serverTasks)
+            if (chatServers != null)
             {
-                task.Dispose();
+                foreach (var server in chatServers)
+                {
+                    server.Dispose();
+                }
             }
         }
 
         public ChatServer(Action<ChatMessage> messageRecievedEvent)
         {
+            chatServers = new ConcurrentBag<IChatServer>();
 
-            chatPipeServer = new ChatPipeServer();
+            var chatPipeServer = new ChatPipeServer();
             chatPipeServer.MessageRecievedEvent += messageRecievedEvent;
+            
+            chatServers.Add(chatPipeServer);
+
+            var chatSocketServer = new ChatSocketServer();
+            chatSocketServer.MessageRecievedEvent += messageRecievedEvent;
+            chatServers.Add(chatSocketServer);
 
             ChatHistory.Instance.ChatMessages.Add(new ChatMessage()
             {
@@ -49,11 +58,8 @@ namespace ChatLibrary
                 MessageSendDate = DateTime.Now
             });
 
-            Task.Factory.StartNew(() =>
-            {
-                chatPipeServer.ListenNewClient();
-            });
-
+            chatPipeServer.Start();
+            chatSocketServer.Start();
         }
     }
 }

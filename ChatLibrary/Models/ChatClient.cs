@@ -24,12 +24,9 @@ namespace ChatLibrary.Models
         public void Dispose()
         {
             IsActive = false;
-            if (ClientPipe != null)
-                ClientPipe.Dispose();
-            if(ClientSocket != null)
-                ClientSocket.Dispose();
-            if (clientEventWaitHandle != null)
-                clientEventWaitHandle.Dispose();
+            ClientPipe?.Dispose();
+            ClientSocket?.Dispose();
+            clientEventWaitHandle?.Dispose();
         }
     }
 }

@@ -102,10 +102,7 @@ namespace ChatLibrary
                 chatMessageStreamClient.WriteMessage(new ChatMessage() { UserName = clientName, Message = message, MessageSendDate = DateTime.Now });
                 return true;
             }
-            else
-            {
-                return false;
-            }
+            return false;
         }
 
         public void Dispose()

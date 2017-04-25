@@ -12,7 +12,7 @@ namespace ChatLibrary.Interfaces
     {
         ConcurrentBag<ChatClient> ChatClients { get; set; }
         event Action<ChatMessage> MessageRecievedEvent;
-        void Connect();
+        void Start();
         void ListenNewClient();
         void SendMessageToClients(ChatMessage message);
 

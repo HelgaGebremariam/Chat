@@ -17,6 +17,7 @@ namespace ChatLibrary
     {
         public ConcurrentBag<ChatClient> ChatClients { get; set; }
         public event Action<ChatMessage> MessageRecievedEvent;
+        private ConcurrentBag<Task> serverTasks;
 
         private readonly Socket _greetingSocket;
         private readonly Socket _clientSocket;
@@ -36,8 +37,9 @@ namespace ChatLibrary
 
         public ChatSocketServer()
         {
+            MessageRecievedEvent += SendMessageToClients;
             ChatClients = new ConcurrentBag<ChatClient>();
-
+            serverTasks = new ConcurrentBag<Task>();
             _greetingSocket = new Socket(GreetingEndpoint.Address.AddressFamily,
                 SocketType.Stream, ProtocolType.Tcp);
             _greetingSocket.Bind(GreetingEndpoint);
@@ -61,8 +63,15 @@ namespace ChatLibrary
             }
         }
 
-        public void Connect()
+        private ChatMessage GetNewUserJoinedMessage(string username)
         {
+            return new ChatMessage() { UserName = username, Message = "Joined", MessageSendDate = DateTime.Now };
+        }
+
+        public void Start()
+        {
+            serverTasks.Add(Task.Factory.StartNew(ListenNewClient));
+            serverTasks.Add(Task.Factory.StartNew(ListenNewChatMessages));
 
         }
 
@@ -97,37 +106,47 @@ namespace ChatLibrary
             }, new object());
         }
 
+        private void ExchangeInitializationInformationWithNewClient(Socket handler, out string newClientName, out string newClientId, out EventWaitHandle newClientEvent)
+        {
+            newClientId = ClientUniqueIdPostfix;
+            var clientEventName = EventWaitHandleName + newClientId;
+            newClientEvent = new EventWaitHandle(false, EventResetMode.AutoReset, clientEventName);
+            var greetingStream = new StreamObjectReader(new NetworkStream(handler));
+            var firstMessage = greetingStream.ReadMessage<ChatMessage>();
+            greetingStream.WriteMessage<string>(newClientId);
+
+            var socketSettings = new SocketSettings()
+            {
+                ClientSocketPort = ClientSocketPort,
+                ServerSocketPort = ServerSocketPort,
+                EventWaitHandleEventName = clientEventName
+            };
+
+            greetingStream.WriteMessage<SocketSettings>(socketSettings);
+            SendChatHistory(greetingStream);
+            newClientName = firstMessage.UserName;
+
+        }
+
         public void ListenNewClient()
         {
             _greetingSocket.Listen(1);
             _greetingSocket.BeginAccept(result => {
 
                     var handler = _greetingSocket.EndAccept(result);
-                    var clientId = ClientUniqueIdPostfix;
-                    var clientEventName = EventWaitHandleName + clientId;
-                    var clientEvent = new EventWaitHandle(false, EventResetMode.AutoReset, clientEventName);
-                    var greetingStream = new StreamObjectReader(new NetworkStream(handler));
-                    var firstMessage = greetingStream.ReadMessage<ChatMessage>();
-                    greetingStream.WriteMessage<string>(clientId);
-
-                    var socketSettings = new SocketSettings()
-                    {
-                        ClientSocketPort = ClientSocketPort,
-                        ServerSocketPort = ServerSocketPort,
-                        EventWaitHandleEventName = clientEventName
-                    };
-
-                    greetingStream.WriteMessage<SocketSettings>(socketSettings);
-                    SendChatHistory(greetingStream);
+                    string newClientName;
+                    string newClientId;
+                    EventWaitHandle newClientEvent;
+                    ExchangeInitializationInformationWithNewClient(handler, out newClientName, out newClientId, out newClientEvent);
                     handler.Close();
-                    MessageRecievedEvent(new ChatMessage() { UserName = firstMessage.UserName, Message = "Joined", MessageSendDate = DateTime.Now });
+                    MessageRecievedEvent?.Invoke(GetNewUserJoinedMessage(newClientName));
 
                     var chatClient = new ChatClient()
                     {
-                        ClientId = clientId,
-                        ClientName = firstMessage.UserName,
+                        ClientId = newClientId,
+                        ClientName = newClientName,
                         IsActive = true,
-                        clientEventWaitHandle = clientEvent
+                        clientEventWaitHandle = newClientEvent
                     };
                     ChatClients.Add(chatClient);
                     ListenNewClient();
@@ -141,7 +160,7 @@ namespace ChatLibrary
             _serverSocket.Listen(1);
 
             _serverSocket.BeginAccept(asyncResult => {
-                Socket serverHandler = _serverSocket.EndAccept(asyncResult);
+                var serverHandler = _serverSocket.EndAccept(asyncResult);
                 var messageStream = new StreamObjectReader(new NetworkStream(serverHandler));
                 messageStream.WriteMessage(message);
             }, _serverSocket);
@@ -156,7 +175,7 @@ namespace ChatLibrary
                         _serverSocket.Listen(1);
                         client.clientEventWaitHandle.Set();
                         _serverSocket.BeginAccept(asyncResult => {
-                            Socket serverHandler = _serverSocket.EndAccept(asyncResult);
+                            var serverHandler = _serverSocket.EndAccept(asyncResult);
                             var messageStream = new StreamObjectReader(new NetworkStream(serverHandler));
                             messageStream.WriteMessage(message);
                         }, _serverSocket);
@@ -174,6 +193,10 @@ namespace ChatLibrary
             foreach (var client in ChatClients)
             {
                 client.Dispose();
+            }
+            foreach (var task in serverTasks)
+            {
+                task.Dispose();
             }
         }
     }
