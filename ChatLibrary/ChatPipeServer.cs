@@ -17,7 +17,7 @@ namespace ChatLibrary
     {
         public ConcurrentBag<ChatClient> ChatClients { get; set; }
         private readonly ConcurrentBag<Task> _serverTasks;
-        private int _clientsCounter = 0;
+        private int _clientsCounter;
 
         public event Action<ChatMessage> MessageRecievedEvent;
 
@@ -37,7 +37,7 @@ namespace ChatLibrary
 
         private static void SendChatHistory(StreamObjectReader chatMessageStream)
         {
-            foreach (var message in ChatHistory.Instance.ChatMessages)
+            foreach (var message in GlobalChatHistory.Instance.ChatMessages)
             {
                 chatMessageStream.WriteMessage(message);
             }
@@ -86,7 +86,7 @@ namespace ChatLibrary
                         chatClient.Dispose();
                         return;
                     }
-                    ChatHistory.Instance.ChatMessages.Add(message);
+                    GlobalChatHistory.Instance.ChatMessages.Add(message);
                     MessageRecievedEvent?.Invoke(message);
                 }
             }

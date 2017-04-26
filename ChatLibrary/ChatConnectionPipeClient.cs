@@ -76,7 +76,7 @@ namespace ChatLibrary
 
 		public ChatConnectionPipeClient(Action<ChatMessage> messageRecievedEvent)
 		{
-			this.MessageRecievedEvent += messageRecievedEvent;
+			MessageRecievedEvent += messageRecievedEvent;
 		}
 
         public bool SendMessage(string message)
@@ -98,7 +98,7 @@ namespace ChatLibrary
 
         public bool Connect(string clientName)
         {
-            this._clientName = clientName;
+            _clientName = clientName;
 
             if (!ExchangeInitializationInformationWithServer())
                 return false;

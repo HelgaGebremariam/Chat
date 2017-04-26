@@ -33,9 +33,9 @@ namespace ChatServer
 
         public void ShowChatHistory()
         {
-            for(int i = 0; i < ChatHistory.Instance.ChatMessages.Count(); i++)
+            for(int i = 0; i < GlobalChatHistory.Instance.ChatMessages.Count(); i++)
             {
-				AddMessage(ChatHistory.Instance.ChatMessages.ElementAt(i));
+				AddMessage(GlobalChatHistory.Instance.ChatMessages.ElementAt(i));
             }
         }
 

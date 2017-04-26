@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO.Pipes;
-using System.IO;
-using System.Threading;
+﻿using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace ChatLibrary
@@ -16,12 +9,12 @@ namespace ChatLibrary
 
         public StreamObjectReader(Stream ioStream)
         {
-            this._ioStream = ioStream;
+            _ioStream = ioStream;
         }
 
-        private static byte[] ObjectToByteArray(Object obj)
+        private static byte[] ObjectToByteArray(object obj)
         {
-            BinaryFormatter bf = new BinaryFormatter();
+            var bf = new BinaryFormatter();
             using (var ms = new MemoryStream())
             {
                 bf.Serialize(ms, obj);
@@ -45,14 +38,13 @@ namespace ChatLibrary
         {
             if (_ioStream.CanRead == false)
                 return null;
-            var len = 0;
-            len = _ioStream.ReadByte() * 256;
+            var len = _ioStream.ReadByte() * 256;
             if (len < 0)
                 return null;
             len += _ioStream.ReadByte();
             if (len <= 0)
                 return null;
-            byte[] inBuffer = new byte[len];
+            var inBuffer = new byte[len];
             _ioStream.Read(inBuffer, 0, len);
 
             return ByteArrayToObject(inBuffer) as T;
@@ -66,7 +58,7 @@ namespace ChatLibrary
             var len = outBuffer.Length;
             if (len > ushort.MaxValue)
             {
-                len = (int)ushort.MaxValue;
+                len = ushort.MaxValue;
             }
             _ioStream.WriteByte((byte)(len / 256));
             _ioStream.WriteByte((byte)(len & 255));

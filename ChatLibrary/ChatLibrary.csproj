@@ -42,7 +42,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ChatClients.cs" />
-    <Compile Include="ChatHistory.cs" />
+    <Compile Include="GlobalChatHistory.cs" />
     <Compile Include="ChatPipeServer.cs" />
     <Compile Include="ChatConnectionSocketClient.cs" />
     <Compile Include="ChatSocketServer.cs" />

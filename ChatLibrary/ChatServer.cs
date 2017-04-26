@@ -23,12 +23,10 @@ namespace ChatLibrary
 
         public void Dispose()
         {
-            if (_chatServers != null)
+            if (_chatServers == null) return;
+            foreach (var server in _chatServers)
             {
-                foreach (var server in _chatServers)
-                {
-                    server.Dispose();
-                }
+                server.Dispose();
             }
         }
 
@@ -55,13 +53,13 @@ namespace ChatLibrary
             chatSocketServer.MessageRecievedEvent += SendMessageToClients;
             _chatServers.Add(chatSocketServer);
 
-            ChatHistory.Instance.ChatMessages.Add(new ChatMessage()
+            GlobalChatHistory.Instance.ChatMessages.Add(new ChatMessage()
             {
                 UserName = "Sarah Kerrigan",
                 Message = "Amon will be dead.",
                 MessageSendDate = DateTime.Now
             });
-            ChatHistory.Instance.ChatMessages.Add(new ChatMessage()
+            GlobalChatHistory.Instance.ChatMessages.Add(new ChatMessage()
             {
                 UserName = "James Raynor",
                 Message = "Yeeeah, absolutely!",

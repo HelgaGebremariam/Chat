@@ -7,6 +7,8 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="350" Width="525"
         Closed="window_Closed"
+        MinHeight="400"
+        MinWidth="500"
         SizeChanged="MainWindow_OnSizeChanged">
     <Grid>
         <TextBox x:Name="textBoxNewMessage" HorizontalAlignment="Left" Height="23" Margin="60,207,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="407"/>

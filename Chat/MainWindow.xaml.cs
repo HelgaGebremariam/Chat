@@ -118,7 +118,7 @@ namespace Chat
             _chatClient?.Dispose();
         }
 
-        private void ResizeControl(FrameworkElement control, double xChange, double yChange)
+        private static void ResizeControl(FrameworkElement control, double xChange, double yChange)
         {
             control.Height = control.ActualHeight * yChange;
             control.Width = control.ActualWidth * xChange;
@@ -133,16 +133,17 @@ namespace Chat
             this.Height = e.NewSize.Height;
 
             double xChange = 1, yChange = 1;
-            if (e.PreviousSize.Width != 0)
+            if (Math.Abs(e.PreviousSize.Width) > 0)
                 xChange = (e.NewSize.Width / e.PreviousSize.Width);
 
-            if (e.PreviousSize.Height != 0)
+            if (Math.Abs(e.PreviousSize.Height) > 0)
                 yChange = (e.NewSize.Height / e.PreviousSize.Height);
 
             ResizeControl(textBoxClientName, xChange, yChange);
             ResizeControl(textBoxNewMessage, xChange, yChange);
             ResizeControl(scrollViewerChatMessages, xChange, yChange);
-
+            ResizeControl(buttonConnect, xChange, yChange);
+            ResizeControl(buttonSendMessage, xChange, yChange);
         }
     }
 }

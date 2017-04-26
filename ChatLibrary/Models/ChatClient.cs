@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.IO.Pipes;
-using System.IO;
 using System.Threading;
-using System.Configuration;
-using System.Collections.Concurrent;
 using System.Net.Sockets;
 
 namespace ChatLibrary.Models
@@ -20,13 +14,13 @@ namespace ChatLibrary.Models
         public Socket ClientSocket { get; set; }
         public Task ListenerTask { get; set; }
         public bool IsActive { get; set; }
-        public EventWaitHandle clientEventWaitHandle;
+        public EventWaitHandle ClientEventWaitHandle;
         public void Dispose()
         {
             IsActive = false;
             ClientPipe?.Dispose();
             ClientSocket?.Dispose();
-            clientEventWaitHandle?.Dispose();
+            ClientEventWaitHandle?.Dispose();
         }
     }
 }
