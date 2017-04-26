@@ -1,20 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Collections;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO.Pipes;
-using System.IO;
-using System.Threading;
-using System.Configuration;
 using System.Collections.Concurrent;
-using System.Net.Sockets;
-using ChatLibrary.Models;
-using System.Net;
+using ChatLibrary.Common;
 using ChatLibrary.Interfaces;
+using ChatLibrary.Models;
 
-namespace ChatLibrary
+namespace ChatLibrary.Server
 {
     public class ChatServer : IDisposable
     {
@@ -53,13 +43,13 @@ namespace ChatLibrary
             chatSocketServer.MessageRecievedEvent += SendMessageToClients;
             _chatServers.Add(chatSocketServer);
 
-            GlobalChatHistory.Instance.ChatMessages.Add(new ChatMessage()
+            GlobalChatHistory.Instance.ChatMessages.Add(new ChatMessage
             {
                 UserName = "Sarah Kerrigan",
                 Message = "Amon will be dead.",
                 MessageSendDate = DateTime.Now
             });
-            GlobalChatHistory.Instance.ChatMessages.Add(new ChatMessage()
+            GlobalChatHistory.Instance.ChatMessages.Add(new ChatMessage
             {
                 UserName = "James Raynor",
                 Message = "Yeeeah, absolutely!",

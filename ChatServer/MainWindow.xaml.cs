@@ -13,6 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using ChatLibrary;
+using ChatLibrary.Common;
 using ChatLibrary.Models;
 using ChatLibrary.Interfaces;
 
@@ -23,11 +24,11 @@ namespace ChatServer
     /// </summary>
     public partial class MainWindow : Window
     {
-        ChatLibrary.ChatServer chatConnectionServer;
+        ChatLibrary.Server.ChatServer chatConnectionServer;
         public MainWindow()
         {
             InitializeComponent();
-			chatConnectionServer = new ChatLibrary.ChatServer(AddMessage);
+			chatConnectionServer = new ChatLibrary.Server.ChatServer(AddMessage);
             ShowChatHistory();
         }
 

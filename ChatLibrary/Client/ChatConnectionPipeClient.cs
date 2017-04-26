@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO.Pipes;
-using System.IO;
-using System.Threading;
 using System.Configuration;
-using ChatLibrary.Models;
+using System.IO.Pipes;
+using System.Threading.Tasks;
+using ChatLibrary.Common;
 using ChatLibrary.Interfaces;
-using System.Runtime.Remoting;
+using ChatLibrary.Models;
 
-namespace ChatLibrary
+namespace ChatLibrary.Client
 {
     public class ChatConnectionPipeClient : IChatConnectionClient
     {

@@ -16,6 +16,7 @@ using ChatLibrary;
 using ChatLibrary.Models;
 using ChatLibrary.Interfaces;
 using System.Runtime.Remoting;
+using ChatLibrary.Client;
 
 namespace Chat
 {

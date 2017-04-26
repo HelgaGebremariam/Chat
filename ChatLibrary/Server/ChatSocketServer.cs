@@ -6,10 +6,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using ChatLibrary.Models;
+using ChatLibrary.Client;
+using ChatLibrary.Common;
 using ChatLibrary.Interfaces;
+using ChatLibrary.Models;
 
-namespace ChatLibrary
+namespace ChatLibrary.Server
 {
     public class ChatSocketServer : IChatServer
     {
@@ -17,11 +19,11 @@ namespace ChatLibrary
         public event Action<ChatMessage> MessageRecievedEvent;
         private readonly ConcurrentBag<Task> _serverTasks;
 
-        private readonly Socket _greetingSocket;
-        private readonly Socket _clientSocket;
-        private readonly Socket _serverSocket;
+        private readonly TcpListener _greetingListener;
+        private readonly TcpListener _clientListener;
+        private readonly TcpListener _serverListener;
 
-        private static IPAddress IpAddress => Dns.GetHostEntry("localhost").AddressList.FirstOrDefault();
+        private static IPAddress IpAddress => Dns.GetHostEntry("localhost").AddressList[1];
 
         private static int ClientSocketPort => Convert.ToInt32(ConfigurationManager.AppSettings["clientSocketPort"]);
         private static int ServerSocketPort => Convert.ToInt32(ConfigurationManager.AppSettings["serverSocketPort"]);
@@ -38,9 +40,9 @@ namespace ChatLibrary
             ChatClients = new ConcurrentBag<ChatClient>();
             _serverTasks = new ConcurrentBag<Task>();
 
-            _greetingSocket = new Socket(GreetingEndpoint.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _serverSocket = new Socket(ServerEndpoint.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _clientSocket = new Socket(ClientEndpoint.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            _greetingListener = new TcpListener(GreetingEndpoint);
+            _serverListener = new TcpListener(ServerEndpoint);
+            _clientListener = new TcpListener(ClientEndpoint);
         }
 
         private string ClientUniqueIdPostfix
@@ -60,10 +62,7 @@ namespace ChatLibrary
 
         public void Start()
         {
-            _greetingSocket.Bind(GreetingEndpoint);
-            _serverSocket.Bind(ServerEndpoint);
-            _serverSocket.Listen(1);
-            _clientSocket.Bind(ClientEndpoint);
+            _serverListener.Start();
             _serverTasks.Add(Task.Factory.StartNew(ListenNewClient));
             _serverTasks.Add(Task.Factory.StartNew(ListenNewChatMessages));
         }
@@ -80,13 +79,12 @@ namespace ChatLibrary
 
         private void ListenNewChatMessages()
         {
-
-            _clientSocket.Listen(1);
-            _clientSocket.BeginAccept(result =>
+            _clientListener.Start();
+            _clientListener.BeginAcceptTcpClient(result =>
             {
-                var handler = _clientSocket.EndAccept(result);
+                var handler = _clientListener.EndAcceptTcpClient(result);
 
-                using (var chatMessageStream = new ChatMessageClientServerStream(new NetworkStream(handler), string.Empty, string.Empty))
+                using (var chatMessageStream = new ChatMessageClientServerStream(handler.GetStream(), string.Empty, string.Empty))
                 {
 
                     var message = chatMessageStream.GetNextMessage();
@@ -98,12 +96,12 @@ namespace ChatLibrary
             }, new object());
         }
 
-        private void ExchangeInitializationInformationWithNewClient(Socket handler, out string newClientName, out string newClientId, out EventWaitHandle newClientEvent)
+        private void ExchangeInitializationInformationWithNewClient(TcpClient handler, out string newClientName, out string newClientId, out EventWaitHandle newClientEvent)
         {
             newClientId = ClientUniqueIdPostfix;
             var clientEventName = EventWaitHandleName + newClientId;
             newClientEvent = new EventWaitHandle(false, EventResetMode.AutoReset, clientEventName);
-            var greetingStream = new StreamObjectReader(new NetworkStream(handler));
+            var greetingStream = new StreamObjectReader(handler.GetStream());
             var firstMessage = greetingStream.ReadMessage<ChatMessage>();
             greetingStream.WriteMessage(newClientId);
 
@@ -122,9 +120,9 @@ namespace ChatLibrary
 
         public void ListenNewClient()
         {
-            _greetingSocket.Listen(1);
-            _greetingSocket.BeginAccept(result => {
-                    var handler = _greetingSocket.EndAccept(result);
+            _greetingListener.Start();
+            _greetingListener.BeginAcceptTcpClient(result => {
+                    var handler = _greetingListener.EndAcceptTcpClient(result);
                     string newClientName;
                     string newClientId;
                     EventWaitHandle newClientEvent;
@@ -153,13 +151,13 @@ namespace ChatLibrary
                 if (!client.IsActive) continue;
                 if (client.ClientEventWaitHandle != null)
                 {
-                    _serverSocket.Listen(1);
+                    _serverListener.Start();
                     client.ClientEventWaitHandle.Set();
-                    _serverSocket.BeginAccept(asyncResult => {
-                        var serverHandler = _serverSocket.EndAccept(asyncResult);
-                        var messageStream = new StreamObjectReader(new NetworkStream(serverHandler));
+                    _serverListener.BeginAcceptTcpClient(asyncResult => {
+                        var serverHandler = _serverListener.EndAcceptTcpClient(asyncResult);
+                        var messageStream = new StreamObjectReader(serverHandler.GetStream());
                         messageStream.WriteMessage(message);
-                    }, _serverSocket);
+                    }, _serverListener);
                 }
                 else
                 {

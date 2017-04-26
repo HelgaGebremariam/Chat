@@ -1,16 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO.Pipes;
-using System.IO;
-using System.Threading;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Configuration;
+using System.IO;
+using System.IO.Pipes;
+using ChatLibrary.Common;
 using ChatLibrary.Models;
 
-namespace ChatLibrary
+namespace ChatLibrary.Client
 {
 	public class ChatMessageClientServerStream : IDisposable
 	{

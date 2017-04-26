@@ -1,17 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Configuration;
 using System.IO.Pipes;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
+using ChatLibrary.Client;
+using ChatLibrary.Common;
 using ChatLibrary.Interfaces;
 using ChatLibrary.Models;
 
-namespace ChatLibrary
+namespace ChatLibrary.Server
 {
     public class ChatPipeServer : IChatServer
     {

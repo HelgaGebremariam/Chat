@@ -1,11 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using ChatLibrary.Models;
 
-namespace ChatLibrary
+namespace ChatLibrary.Common
 {
     public class GlobalChatHistory
     {
-        private static GlobalChatHistory _instance = null;
+        private static GlobalChatHistory _instance;
         private static readonly object Padlock = new object();
         public ConcurrentBag<ChatMessage> ChatMessages = new ConcurrentBag<ChatMessage>();
         public static GlobalChatHistory Instance
