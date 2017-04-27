@@ -79,7 +79,7 @@ namespace Chat
                 }
                 else
                 {
-                    _chatClient = new ChatConnectionSocketClient(AddMessage);
+                    _chatClient = new ChatConnectionTcpClient(AddMessage);
                 }
                 _chatClient.Connect(textBoxClientName.Text);
                 ShowChatHistory();

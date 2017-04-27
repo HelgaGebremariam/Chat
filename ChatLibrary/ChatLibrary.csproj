@@ -43,7 +43,7 @@
   <ItemGroup>
     <Compile Include="Common\GlobalChatHistory.cs" />
     <Compile Include="Server\ChatPipeServer.cs" />
-    <Compile Include="Client\ChatConnectionSocketClient.cs" />
+    <Compile Include="Client\ChatConnectionTcpClient.cs" />
     <Compile Include="Server\ChatTCPServer.cs" />
     <Compile Include="Interfaces\IChatConnectionClient.cs" />
     <Compile Include="Interfaces\IChatServer.cs" />

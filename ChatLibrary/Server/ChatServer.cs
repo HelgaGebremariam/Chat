@@ -16,6 +16,7 @@ namespace ChatLibrary.Server
             if (_chatServers == null) return;
             foreach (var server in _chatServers)
             {
+                server.SendMessageToClients(new ChatMessage() {MessageSendDate = DateTime.MinValue});
                 server.Dispose();
             }
         }
@@ -38,7 +39,7 @@ namespace ChatLibrary.Server
 
             _chatServers.Add(chatPipeServer);
 
-            var chatSocketServer = new ChatTCPServer();
+            var chatSocketServer = new ChatTcpServer();
             chatSocketServer.MessageRecievedEvent += messageRecievedEvent;
             chatSocketServer.MessageRecievedEvent += SendMessageToClients;
             _chatServers.Add(chatSocketServer);

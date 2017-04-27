@@ -13,11 +13,10 @@ using ChatLibrary.Models;
 
 namespace ChatLibrary.Server
 {
-    public class ChatTCPServer : IChatServer
+    public class ChatTcpServer : IChatServer
     {
         public ConcurrentBag<ChatClient> ChatClients { get; set; }
         public event Action<ChatMessage> MessageRecievedEvent;
-        private readonly ConcurrentBag<Task> _serverTasks;
 
         private readonly TcpListener _tcpListener;
 		private volatile bool _isTimeToFinish = false;
@@ -26,12 +25,9 @@ namespace ChatLibrary.Server
         private static int ServerSocketPort => Convert.ToInt32(ConfigurationManager.AppSettings["serverSocketPort"]);
         private static IPEndPoint ServerEndpoint => new IPEndPoint(IpAddress, ServerSocketPort);
 
-        private int _clientsCounter = 0;
-
-        public ChatTCPServer()
+        public ChatTcpServer()
         {
             ChatClients = new ConcurrentBag<ChatClient>();
-            _serverTasks = new ConcurrentBag<Task>();
 			_tcpListener = new TcpListener(ServerEndpoint);
 		}
 
@@ -42,7 +38,8 @@ namespace ChatLibrary.Server
 
         public void Start()
         {
-			_serverTasks.Add(Task.Factory.StartNew(ListenNewClient));
+            _tcpListener.Start();
+            Task.Factory.StartNew(ListenNewClient);
         }
 
         private static void SendChatHistory(StreamObjectReader chatMessageStream)
@@ -57,17 +54,25 @@ namespace ChatLibrary.Server
 
         private void ListenNewChatMessages(ChatClient client)
         {
-			var chatMessageStream = new ChatMessageClientServerStream(client.ClientTcp.GetStream(), client.ClientId, client.ClientName);
-			while (!_isTimeToFinish)
-			{
-				var message = chatMessageStream.GetNextMessage();
+            try
+            {
+                var chatMessageStream = new ChatMessageClientServerStream(client.ClientTcp.GetStream(), client.ClientId, client.ClientName);
+                while (!_isTimeToFinish)
+                {
 
-				GlobalChatHistory.Instance.ChatMessages.Add(message);
-				MessageRecievedEvent?.Invoke(message);
-			}
+                    var message = chatMessageStream.GetNextMessage();
+
+                    GlobalChatHistory.Instance.ChatMessages.Add(message);
+                    MessageRecievedEvent?.Invoke(message);
+                }
+            }
+            catch (System.IO.IOException)
+            {
+                // ignored
+            }
         }
 
-        private void ExchangeInitializationInformationWithNewClient(TcpClient handler, out string newClientName, out string newClientId)
+        private static void ExchangeInitializationInformationWithNewClient(TcpClient handler, out string newClientName, out string newClientId)
         {
             newClientId = Guid.NewGuid().ToString();
 			var greetingStream = new StreamObjectReader(handler.GetStream());
@@ -81,39 +86,36 @@ namespace ChatLibrary.Server
 
         public void ListenNewClient()
         {
-			_tcpListener.Start();
-			_tcpListener.BeginAcceptTcpClient(result => {
+            while (!_isTimeToFinish)
+            {
+                try
+                {
+                    var handler = _tcpListener.AcceptTcpClient();
+                    string newClientName;
+                    string newClientId;
+                    ExchangeInitializationInformationWithNewClient(handler, out newClientName, out newClientId);
 
-				try
-				{
-					var handler = _tcpListener.EndAcceptTcpClient(result);
-					string newClientName;
-					string newClientId;
-					ExchangeInitializationInformationWithNewClient(handler, out newClientName, out newClientId);
+                    MessageRecievedEvent?.Invoke(GetNewUserJoinedMessage(newClientName));
 
-					MessageRecievedEvent?.Invoke(GetNewUserJoinedMessage(newClientName));
+                    var chatClient = new ChatClient()
+                    {
+                        ClientId = newClientId,
+                        ClientName = newClientName,
+                        IsActive = true,
+                        ClientTcp = handler
+                    };
+                    ChatClients.Add(chatClient);
+                    Task.Factory.StartNew(() => { ListenNewChatMessages(chatClient); });
+                }
+                catch (SocketException)
+                {
+                    return;
+                }
 
-					var chatClient = new ChatClient()
-					{
-						ClientId = newClientId,
-						ClientName = newClientName,
-						IsActive = true,
-						ClientTcp = handler
-					};
-					ChatClients.Add(chatClient);
-					_serverTasks.Add(Task.Factory.StartNew(() => { ListenNewChatMessages(chatClient); }));
-					if (!_isTimeToFinish)
-						ListenNewClient();
-				}
-				catch(ObjectDisposedException)
-				{
-					return;
-				}
-            },
-            new object());
+            }
         }
 
-		public void SendMessageToClients(ChatMessage message)
+        public void SendMessageToClients(ChatMessage message)
 		{
 			foreach (var client in ChatClients)
 			{
@@ -134,13 +136,10 @@ namespace ChatLibrary.Server
         {
 			_isTimeToFinish = true;
 			_tcpListener.Stop();
-			foreach (var client in ChatClients)
+
+            foreach (var client in ChatClients)
             {
                 client.Dispose();
-            }
-            foreach (var task in _serverTasks)
-            {
-				task.Dispose();
             }
         }
     }

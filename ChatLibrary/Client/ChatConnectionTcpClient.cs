@@ -13,12 +13,10 @@ using ChatLibrary.Models;
 
 namespace ChatLibrary.Client
 {
-    public class ChatConnectionSocketClient : IChatConnectionClient
+    public class ChatConnectionTcpClient : IChatConnectionClient
     {
         private string _clientName;
         private event Action<ChatMessage> MessageRecievedEvent;
-
-        private Task _chatListenerTask;
         private volatile bool _isTimeToFinish = false;
 
         public List<ChatMessage> ChatHistory { get; set; }
@@ -48,7 +46,7 @@ namespace ChatLibrary.Client
 
                 return true;
             }
-            catch(SocketException se)
+            catch(SocketException)
             {
                 return false;
             }
@@ -57,16 +55,19 @@ namespace ChatLibrary.Client
 
         private void ChatListener()
         {
-            while(!_isTimeToFinish)
+            var chatMessageStreamServer = new StreamObjectReader(_tcpClient.GetStream());
+            while (!_isTimeToFinish)
             {
-
-                var chatMessageStreamServer = new StreamObjectReader(_tcpClient.GetStream());
                 var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
+                if (newMessage.MessageSendDate == DateTime.MinValue)
+                {
+                    return;
+                }
                 MessageRecievedEvent?.Invoke(newMessage);
             }
         }
 
-        public ChatConnectionSocketClient(Action<ChatMessage> messageRecievedEvent)
+        public ChatConnectionTcpClient(Action<ChatMessage> messageRecievedEvent)
         {
             this.MessageRecievedEvent += messageRecievedEvent;
         }
@@ -74,8 +75,6 @@ namespace ChatLibrary.Client
         public void Dispose()
         {
             _isTimeToFinish = true;
-            _chatListenerTask.Wait();
-            _chatListenerTask.Dispose();
         }
 
         public bool SendMessage(string message)
@@ -112,7 +111,7 @@ namespace ChatLibrary.Client
 
 			if (!ExchangeInitializationInformationWithServer())
                 return false;
-            _chatListenerTask = Task.Factory.StartNew(ChatListener);
+            Task.Factory.StartNew(ChatListener);
             return true;
         }
     }
