@@ -18,16 +18,6 @@ namespace ChatLibrary.Server
 
         public event Action<ChatMessage> MessageRecievedEvent;
 
-        private string ClientUniqueIdPostfix
-        {
-            get
-            {
-                var uniqueName = _clientsCounter.ToString();
-                _clientsCounter++;
-                return uniqueName;
-            }
-        }
-        
         private static int MaxClientsNumber => Convert.ToInt32(ConfigurationManager.AppSettings["maxClientsNumber"]);
         private static string ServerPipeName => ConfigurationManager.AppSettings["serverPipeName"];
         private static string GreetingPipeName => ConfigurationManager.AppSettings["greetingPipeName"];
@@ -93,8 +83,8 @@ namespace ChatLibrary.Server
         {
             var greetingStream = new StreamObjectReader(pipe);
             var firstMessage = greetingStream.ReadMessage<ChatMessage>();
-            newClientId = ClientUniqueIdPostfix;
-            greetingStream.WriteMessage<string>(newClientId);
+            newClientId = Guid.NewGuid().ToString();
+			greetingStream.WriteMessage<string>(newClientId);
             SendChatHistory(greetingStream);
             pipe.WaitForPipeDrain();
             newClientName = firstMessage.UserName;

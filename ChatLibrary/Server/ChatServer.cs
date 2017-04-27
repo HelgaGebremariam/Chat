@@ -38,7 +38,7 @@ namespace ChatLibrary.Server
 
             _chatServers.Add(chatPipeServer);
 
-            var chatSocketServer = new ChatSocketServer();
+            var chatSocketServer = new ChatTCPServer();
             chatSocketServer.MessageRecievedEvent += messageRecievedEvent;
             chatSocketServer.MessageRecievedEvent += SendMessageToClients;
             _chatServers.Add(chatSocketServer);
