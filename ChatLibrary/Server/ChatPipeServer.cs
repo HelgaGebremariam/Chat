@@ -14,7 +14,6 @@ namespace ChatLibrary.Server
     {
         public ConcurrentBag<ChatClient> ChatClients { get; set; }
         private readonly ConcurrentBag<Task> _serverTasks;
-        private int _clientsCounter;
 
         public event Action<ChatMessage> MessageRecievedEvent;
 
@@ -79,7 +78,7 @@ namespace ChatLibrary.Server
             }
         }
 
-        private void ExchangeInitializationInformationWithNewClient(PipeStream pipe, out string newClientName, out string newClientId)
+        private static void ExchangeInitializationInformationWithNewClient(PipeStream pipe, out string newClientName, out string newClientId)
         {
             var greetingStream = new StreamObjectReader(pipe);
             var firstMessage = greetingStream.ReadMessage<ChatMessage>();

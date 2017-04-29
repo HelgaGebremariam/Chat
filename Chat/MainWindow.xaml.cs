@@ -64,7 +64,7 @@ namespace Chat
             textBoxNewMessage.Text = string.Empty;
         }
 
-        private void buttonConnect_Click(object sender, RoutedEventArgs e)
+        private async void buttonConnect_Click(object sender, RoutedEventArgs e)
         {
             if(textBoxClientName.Text == string.Empty)
             {
@@ -82,8 +82,10 @@ namespace Chat
                     _chatClient = new ChatConnectionTcpClient(AddMessage);
                 }
                 _chatClient.Connect(textBoxClientName.Text);
+                
                 ShowChatHistory();
                 ConnectedState();
+                await _chatClient.StartListening();
             }
             catch(ServerException)
             {

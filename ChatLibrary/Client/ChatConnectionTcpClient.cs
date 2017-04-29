@@ -17,8 +17,7 @@ namespace ChatLibrary.Client
     {
         private string _clientName;
         private event Action<ChatMessage> MessageRecievedEvent;
-        private volatile bool _isTimeToFinish = false;
-
+        private volatile bool _isConnected = false;
         public List<ChatMessage> ChatHistory { get; set; }
 
 		private TcpClient _tcpClient;
@@ -56,7 +55,7 @@ namespace ChatLibrary.Client
         private void ChatListener()
         {
             var chatMessageStreamServer = new StreamObjectReader(_tcpClient.GetStream());
-            while (!_isTimeToFinish)
+            while (_isConnected)
             {
                 var newMessage = chatMessageStreamServer.ReadMessage<ChatMessage>();
                 if (newMessage.MessageSendDate == DateTime.MinValue)
@@ -74,7 +73,7 @@ namespace ChatLibrary.Client
 
         public void Dispose()
         {
-            _isTimeToFinish = true;
+            _isConnected = false;
         }
 
         public bool SendMessage(string message)
@@ -96,6 +95,7 @@ namespace ChatLibrary.Client
 
         public bool Connect(string clientName)
         {
+            _isConnected = false;
             this._clientName = clientName;
 			_tcpClient = new TcpClient();
 
@@ -107,12 +107,20 @@ namespace ChatLibrary.Client
 			}
 
 			if (!_tcpClient.Connected)
-				return false;
+                return _isConnected;
 
-			if (!ExchangeInitializationInformationWithServer())
-                return false;
-            Task.Factory.StartNew(ChatListener);
-            return true;
+            if (!ExchangeInitializationInformationWithServer())
+                return _isConnected;
+
+            _isConnected = true;
+            return _isConnected;
+        }
+
+        public Task StartListening()
+        {
+            if (!_isConnected)
+                throw new Exception("Not connected");
+            return Task.Factory.StartNew(ChatListener);
         }
     }
 }

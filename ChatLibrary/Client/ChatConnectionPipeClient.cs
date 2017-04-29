@@ -18,8 +18,9 @@ namespace ChatLibrary.Client
         private NamedPipeClientStream _pipeClient;
         private NamedPipeClientStream _pipeServer;
 		private event Action<ChatMessage> MessageRecievedEvent;
-        private Task _chatListenerTask;
         private const int ConnectionTimeout = 1000;
+        private volatile bool _isConnected = false;
+
         private string ClientId { get; set; }
 
         private string ClientPipeName => ConfigurationManager.AppSettings["clientPipeName"] + ClientId;
@@ -88,22 +89,22 @@ namespace ChatLibrary.Client
             _pipeServer.Close();
             _pipeClient.Dispose();
             _pipeServer.Dispose();
-            _chatListenerTask.Wait();
-            _chatListenerTask.Dispose();
         }
 
         public bool Connect(string clientName)
         {
+            _isConnected = false;
+
             _clientName = clientName;
 
             if (!ExchangeInitializationInformationWithServer())
-                return false;
+                return _isConnected;
 
             _pipeServer = new NamedPipeClientStream(ServerName, ServerPipeName, PipeDirection.In);
             _pipeServer.Connect(ConnectionTimeout);
 
             if (!_pipeServer.IsConnected)
-                return false;
+                return _isConnected;
 
             _chatMessageStreamServer = new StreamObjectReader(_pipeServer);
 
@@ -111,13 +112,19 @@ namespace ChatLibrary.Client
             _pipeClient.Connect(ConnectionTimeout);
 
             if (!_pipeClient.IsConnected)
-                return false;
+                return _isConnected;
 
             _chatMessageStreamClient = new StreamObjectReader(_pipeClient);
 
-            _chatListenerTask = Task.Factory.StartNew(ChatListener);
+            _isConnected = true;
+            return _isConnected;
+        }
 
-            return true;
+        public Task StartListening()
+        {
+            if (!_isConnected)
+                throw new Exception("Not connected");
+            return Task.Factory.StartNew(ChatListener);
         }
     }
 }
